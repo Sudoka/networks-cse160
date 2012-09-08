@@ -19,6 +19,7 @@ implementation {
 	components RandomC as Random;
 	
 	components new TimerMilliC() as pingTimeoutTimer;
+	components new TimerMilliC();
 	
 	components ActiveMessageC;
 	components new AMSenderC(6);
@@ -28,6 +29,7 @@ implementation {
 	
 	//Timers
 	Node.pingTimeoutTimer->pingTimeoutTimer;
+	Node.discoveryTimer->TimerMilliC;
 	
 	Node.Random -> Random;
 	

@@ -6,7 +6,7 @@ from TOSSIM import *
 from packet import *
 import sys
 
-numNodes = 2
+numNodes = 17
 
 t = Tossim([])
 r = t.radio()
@@ -22,8 +22,8 @@ for line in f:
 # Channels used for debuging
 t.addChannel("genDebug", sys.stdout)
 t.addChannel("cmdDebug", sys.stdout);
-t.addChannel("Project1N", sys.stdout)
-t.addChannel("Project1F", sys.stdout)
+#t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
+#t.addChannel("Project1N", sys.stdout) #Uncomment to enable Neighbor Discovery debug prints
 
 
 
@@ -32,15 +32,15 @@ for line in noise:
   str1 = line.strip()
   if str1:
     val = int(str1)
-    for i in range(1, 3):
+    for i in range(1, numNodes+1):
        t.getNode(i).addNoiseTraceReading(val)
 
-for i in range(1, 3):
+for i in range(1, numNodes+1):
   print "Creating noise model for ",i;
   t.getNode(i).createNoiseModel()
 
-t.getNode(1).bootAtTime(1000);
-t.getNode(2).bootAtTime(2333);
+for i in range(1, numNodes+1):
+    t.getNode(i).bootAtTime(1000 + 1333*(i-1));
 
 
 def package(string):
@@ -65,7 +65,6 @@ msg.set_TTL(15)
 msg.set_protocol(0)
 
 pkt = t.newPacket()
-print(type(pkt))
 pkt.setData(msg.data)
 pkt.setType(msg.get_amType())
 
@@ -91,7 +90,6 @@ runTime(200)
 #where is this send happening in code, i tried to make a debug print that would say "sending packet %s", msg
 #but i could not find the proper place in the Node.nc file 
 #id like to have 3 print segments per packet sent, a sending, a receiving, and a replying
-sendCMD("1 2 Hello World!")
-sendCMD("2 1 Hi im marbin!")
-#sendCMD("1 3 Greatest Destiny")
-    
+sendCMD("1 4 Hello World!")
+sendCMD("3 5 Hi Im Marbin")
+sendCMD("1 16 What a world")
