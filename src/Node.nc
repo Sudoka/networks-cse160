@@ -118,21 +118,24 @@ implementation{
 			tempReceive.seq = myMsg->seq;
 			
 			if(arrListContains(&Received, myMsg->src, myMsg->seq)) {
-				dbg("Project1F", "Received a previously forwarded, sent, or received packet. Discarding\n\n");
+				dbg("Project1F", "Received a previously forwarded, sent, or received packet. Discarding MSG : %s Seq : %d\n\n", myMsg->payload, myMsg->seq);
 				return msg;
 			} else {
 				if(TOS_NODE_ID == myMsg->dest) {
-					dbg("Project1F", "Received packet ment for %d(me), receiving \n", TOS_NODE_ID, myMsg->dest);
+					dbg("Project1F", "Received packet meant for %d(me), receiving \n", TOS_NODE_ID, myMsg->dest);
 				} else {
-					dbg("Project1F", "Received packet ment for %d, sending to all neighbors \n", myMsg->dest);
+					dbg("Project1F", "Received packet meant for %d, sending to all neighbors %d %d %s \n", myMsg->dest, myMsg->src, myMsg->dest, myMsg->payload);
 				}
 			}
 			
 			if(arrListPushBack(&Received, tempReceive)) {
-				dbg("Project1F", "Packet Added to list of handled packets, It will not be reprocessed %d\n", arrListSize(&Received));
+				dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n", arrListSize(&Received));
 			} else {
 				dbg("Project1F", "\n\n\npacket could not be added to list\n\n\n");
 				//empty the list
+				pop_front(&Received);
+				if(!arrListPushBack(&Received, tempReceive))
+					dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
 			}
 
 			if(TOS_NODE_ID==myMsg->dest){
@@ -142,10 +145,23 @@ implementation{
 					uint16_t dest;
 					//cases are named by the packet that was received, so the ping case is when you recieve a ping case, not when you send a ping case
 					case PROTOCOL_PING:
-						dbg("genDebug", "Sending Ping Reply to %d! \n\n", myMsg->src);
-						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
+						dbg("genDebug", "Sending Ping Reply to %d! \n", myMsg->src);
+						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, myMsg->payload, sizeof(myMsg->payload));
 						sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
 						post sendBufferTask();
+						tempSend.src = sendPackage.src;
+						tempSend.seq = sendPackage.seq;
+						
+						if(arrListPushBack(&Received, tempSend)) {
+							dbg("Project1F", "ping reply added to list of handled packets, will not reprocess %d\n\n", arrListSize(&Received));
+						} else {
+							dbg("Project1F", "packet could not be added to list\n\n");
+							//empty the list
+							pop_front(&Received);
+							if(!arrListPushBack(&Received, tempReceive))
+								dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
+						}
+				
 						break;
 
 					case PROTOCOL_PINGREPLY:
@@ -153,17 +169,31 @@ implementation{
 						break;
 						
 					case PROTOCOL_CMD:
+							//dbg("genDebug", "%s\n", &myMsg->payload);
 							switch(getCMD((uint8_t *) &myMsg->payload, sizeof(myMsg->payload))){
 								uint32_t temp=0;
 								case CMD_PING:
-								    dbg("genDebug", "Ping packet received: %lu\n", temp);
 									memcpy(&createMsg, (myMsg->payload) + PING_CMD_LENGTH, sizeof(myMsg->payload) - PING_CMD_LENGTH);
 									memcpy(&dest, (myMsg->payload)+ PING_CMD_LENGTH-2, sizeof(uint8_t));
 									makePack(&sendPackage, TOS_NODE_ID, (dest-48)&(0x00FF), MAX_TTL, PROTOCOL_PING, sequenceNum++, (uint8_t *)createMsg,
-									sizeof(createMsg));	
+									sizeof(createMsg));
+									dbg("genDebug", "Ping packet Sent: %d %d %d %d %s\n", sendPackage.src, sendPackage.dest, sendPackage.seq, sendPackage.TTL, sendPackage.payload);
+									tempSend.src = sendPackage.src;
+									tempSend.seq = sendPackage.seq;
+									
+									if(arrListPushBack(&Received, tempSend)) {
+										dbg("Project1F", "ping packet added to list of handled packets, will not reprocess %d\n\n", arrListSize(&Received));
+									} else {
+										dbg("Project1F", "packet could not be added to list\n\n");
+										//empty the list
+										pop_front(&Received);
+										if(!arrListPushBack(&Received, tempReceive))
+											dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
+									}
+									//dbg("genDebug", "source : %d dest : %d payload : %s\n", sendPackage.src, sendPackage.dest, sendPackage.payload);
 									
 									//Place in Send Buffer
-									sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, sendPackage.dest);
+									sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
 									post sendBufferTask();
 									
 									break;
@@ -183,8 +213,8 @@ implementation{
 				dbg("cmdDebug", "Source is this node: %s\n", myMsg->payload);
 				return msg;
 			} else {
-				makePack(&sendPackage, myMsg->src, myMsg->dest, myMsg->TTL, myMsg->protocol, myMsg->seq, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
-				sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
+				//makePack(&sendPackage, myMsg->src, myMsg->dest, myMsg->TTL, myMsg->protocol, myMsg->seq, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
+				sendBufferPushBack(&packBuffer, *myMsg, myMsg->src, AM_BROADCAST_ADDR);
 				post sendBufferTask();
 				dbg("Project1F", "Packet broadcasted\n\n");
 			}
@@ -229,17 +259,6 @@ implementation{
 
 			if(call AMSend.send(dest, &pkt, sizeof(pack)) ==SUCCESS){
 				busy = TRUE;
-				
-				tempSend.src = msg->src;
-				tempSend.seq = msg->seq;
-				
-				if(arrListPushBack(&Received, tempSend)) {
-					//dbg("Project1F", "packet recorded as previously sent %d\n\n", arrListSize(&Received));
-				} else {
-					//dbg("Project1F", "packet could not be added to list\n\n");
-					//empty the list
-				}
-				
 				return SUCCESS;
 			}else{
 				dbg("genDebug","The radio is busy, or something\n");
