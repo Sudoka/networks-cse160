@@ -23,8 +23,8 @@ for line in f:
 # Channels used for debuging
 t.addChannel("genDebug", sys.stdout)
 #t.addChannel("cmdDebug", sys.stdout);
-t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
-#t.addChannel("Project1N", sys.stdout) #Uncomment to enable Neighbor Discovery debug prints
+#t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
+t.addChannel("Project1N", sys.stdout) #Uncomment to enable Neighbor Discovery debug prints
 
 
 
@@ -97,6 +97,7 @@ runTime(200)
 #sendCMD("3 5 Hi Im Marbin")
 #sendCMD("1 16 What a world")
 
-sendCMD("0 1 cmd ping 4 test", 0)
-sendCMD("0 1 cmd ping 4 marbin", 1)
-sendCMD("0 1 cmd ping 4 marbout", 2)
+sendCMD("0 1 cmd ping 4 ping", 0)
+#sendCMD("0 1 cmd ping 4 marbin", 1)
+#sendCMD("0 4 cmd kill", 2)
+#sendCMD("0 1 cmd ping 4 marbout", 3)

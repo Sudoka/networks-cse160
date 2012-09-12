@@ -46,6 +46,8 @@ module Node{
 }
 
 implementation{
+	uint16_t DISCOVERY_DEST = -1;
+	
 	uint16_t sequenceNum = 0;
 	uint16_t discoveryCounter = 0;
 
@@ -64,8 +66,11 @@ implementation{
 	//Ping/PingReply Variables
 	pingList pings;
 
+	
 	error_t send(uint16_t src, uint16_t dest, pack *message);
 	void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
+	void discoverNeighbors(uint8_t len);
+	
 	task void sendBufferTask();
 			
 	
@@ -78,7 +83,7 @@ implementation{
 	event void AMControl.startDone(error_t err){
 		if(err == SUCCESS){
 			call pingTimeoutTimer.startPeriodic(PING_TIMER_PERIOD + (uint16_t) ((call Random.rand16())%200));
-			call discoveryTimer.startPeriodic(PING_TIMER_PERIOD + (uint16_t) ((call Random.rand16())%200));
+			//call discoveryTimer.startPeriodic(PING_TIMER_PERIOD + (uint16_t) ((call Random.rand16())%200));
 		}else{
 			//Retry until successful
 			call AMControl.start();
@@ -89,11 +94,11 @@ implementation{
 
 	event void pingTimeoutTimer.fired(){
 		checkTimes(&pings, call pingTimeoutTimer.getNow());
-		dbg("Project1N", "checking ping timers\n");
+		//dbg("Project1N", "checking ping timers\n");
 	}
 	
 	event void discoveryTimer.fired() {
-		dbg("Project1N", "fireeee %d %d\n", TOS_NODE_ID, discoveryCounter++);
+		//dbg("Project1N", "fireeee %d %d\n", TOS_NODE_ID, discoveryCounter++);
 	}
 	
 	
@@ -108,14 +113,18 @@ implementation{
 
 	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
 		if(!isActive){
-			dbg("genDebug", "The Node is inactive, packet will not be read.");
+			dbg("genDebug", "The Node is inactive, packet will not be read.\n");
 			return msg;	
 		}
 		if(len==sizeof(pack)){
+			
 			pack* myMsg=(pack*) payload;
+			
+			//dbg("genDebug", "something happened\n");
 			
 			tempReceive.src = myMsg->src;
 			tempReceive.seq = myMsg->seq;
+			
 			
 			if(arrListContains(&Received, myMsg->src, myMsg->seq)) {
 				dbg("Project1F", "Received a previously forwarded, sent, or received packet. Discarding MSG : %s Seq : %d\n\n", myMsg->payload, myMsg->seq);
@@ -145,8 +154,8 @@ implementation{
 					uint16_t dest;
 					//cases are named by the packet that was received, so the ping case is when you recieve a ping case, not when you send a ping case
 					case PROTOCOL_PING:
-						dbg("genDebug", "Sending Ping Reply to %d! \n", myMsg->src);
-						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, myMsg->payload, sizeof(myMsg->payload));
+						dbg("genDebug", "Sending Ping Reply to %d!\n", myMsg->src);
+						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, "rply", sizeof(myMsg->payload));
 						sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
 						post sendBufferTask();
 						tempSend.src = sendPackage.src;
@@ -166,6 +175,7 @@ implementation{
 
 					case PROTOCOL_PINGREPLY:
 						dbg("genDebug", "Received a Ping Reply from %d (%s)!\n\n", myMsg->src, myMsg->payload);
+						discoverNeighbors(sizeof(myMsg->payload));
 						break;
 						
 					case PROTOCOL_CMD:
@@ -175,8 +185,7 @@ implementation{
 								case CMD_PING:
 									memcpy(&createMsg, (myMsg->payload) + PING_CMD_LENGTH, sizeof(myMsg->payload) - PING_CMD_LENGTH);
 									memcpy(&dest, (myMsg->payload)+ PING_CMD_LENGTH-2, sizeof(uint8_t));
-									makePack(&sendPackage, TOS_NODE_ID, (dest-48)&(0x00FF), MAX_TTL, PROTOCOL_PING, sequenceNum++, (uint8_t *)createMsg,
-									sizeof(createMsg));
+									makePack(&sendPackage, TOS_NODE_ID, (dest-48)&(0x00FF), MAX_TTL, PROTOCOL_PING, sequenceNum++, (uint8_t *)createMsg, sizeof(createMsg));
 									dbg("genDebug", "Ping packet Sent: %d %d %d %d %s\n", sendPackage.src, sendPackage.dest, sendPackage.seq, sendPackage.TTL, sendPackage.payload);
 									tempSend.src = sendPackage.src;
 									tempSend.seq = sendPackage.seq;
@@ -212,8 +221,17 @@ implementation{
 			}else if(TOS_NODE_ID==myMsg->src){
 				dbg("cmdDebug", "Source is this node: %s\n", myMsg->payload);
 				return msg;
+			} else if(myMsg->dest == DISCOVERY_DEST) {
+				switch(myMsg->protocol){
+					case PROTOCOL_PING:
+						dbg("Project1N", "Im Here\n");
+						break;
+					case PROTOCOL_PINGREPLY:
+						break;
+				}
 			} else {
 				//makePack(&sendPackage, myMsg->src, myMsg->dest, myMsg->TTL, myMsg->protocol, myMsg->seq, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
+				myMsg->payload[4] = (TOS_NODE_ID + 48);
 				sendBufferPushBack(&packBuffer, *myMsg, myMsg->src, AM_BROADCAST_ADDR);
 				post sendBufferTask();
 				dbg("Project1F", "Packet broadcasted\n\n");
@@ -279,4 +297,11 @@ implementation{
 		Package->protocol = protocol;
 		memcpy(Package->payload, payload, length);
 	}
+	
+	void discoverNeighbors(uint8_t len){
+		dbg("Project1N", "Broadcasting Discovery Ping\n");
+		makePack(&sendPackage, TOS_NODE_ID, DISCOVERY_DEST, MAX_TTL, PROTOCOL_PING, sequenceNum++, "", len);
+		sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
+		post sendBufferTask();
+	}	
 }
