@@ -58,18 +58,18 @@ implementation{
 
 	sendBuffer packBuffer;	
 	arrlist Received;
-	pair tempReceive;
-	pair tempSend;
 	
 	bool isActive = TRUE;
 
 	//Ping/PingReply Variables
 	pingList pings;
+	uint32_t discoveryList[20];
 
 	
 	error_t send(uint16_t src, uint16_t dest, pack *message);
 	void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
-	void discoverNeighbors(uint8_t len);
+	void discoverNeighbors();
+	void printNeighbors();
 	
 	task void sendBufferTask();
 			
@@ -78,34 +78,37 @@ implementation{
 		call AMControl.start();
 		
 		dbg("genDebug", "Booted\n");
+		//if(TOS_NODE_ID == 2)
+		//	discoverNeighbors(PACKET_MAX_PAYLOAD_SIZE);	
 	}
 
 	event void AMControl.startDone(error_t err){
 		if(err == SUCCESS){
 			call pingTimeoutTimer.startPeriodic(PING_TIMER_PERIOD + (uint16_t) ((call Random.rand16())%200));
-			//call discoveryTimer.startPeriodic(PING_TIMER_PERIOD + (uint16_t) ((call Random.rand16())%200));
+			call discoveryTimer.startPeriodic(1000);
 		}else{
 			//Retry until successful
 			call AMControl.start();
 		}
 	}
 
-	event void AMControl.stopDone(error_t err){}
+	event void AMControl.stopDone(error_t err){
+		
+	}
 
 	event void pingTimeoutTimer.fired(){
 		checkTimes(&pings, call pingTimeoutTimer.getNow());
-		//dbg("Project1N", "checking ping timers\n");
 	}
 	
 	event void discoveryTimer.fired() {
-		//dbg("Project1N", "fireeee %d %d\n", TOS_NODE_ID, discoveryCounter++);
+		discoverNeighbors();
 	}
 	
 	
 	event void AMSend.sendDone(message_t* msg, error_t error){
 		//Clear Flag, we can send again.
 		if(&pkt == msg){
-			//dbg("Project1F", "---Packet Sent---\n\n");
+			dbg("Project1F", "Send Done\n\n");
 			busy = FALSE;
 			post sendBufferTask();
 		}
@@ -117,14 +120,13 @@ implementation{
 			return msg;	
 		}
 		if(len==sizeof(pack)){
-			
 			pack* myMsg=(pack*) payload;
-			
-			//dbg("genDebug", "something happened\n");
+			pair tempReceive;
 			
 			tempReceive.src = myMsg->src;
 			tempReceive.seq = myMsg->seq;
 			
+			//dbg("Project1F", "Packet Received. Status : ");
 			
 			if(arrListContains(&Received, myMsg->src, myMsg->seq)) {
 				dbg("Project1F", "Received a previously forwarded, sent, or received packet. Discarding MSG : %s Seq : %d\n\n", myMsg->payload, myMsg->seq);
@@ -132,6 +134,8 @@ implementation{
 			} else {
 				if(TOS_NODE_ID == myMsg->dest) {
 					dbg("Project1F", "Received packet meant for %d(me), receiving \n", TOS_NODE_ID, myMsg->dest);
+				} else if (myMsg->dest == DISCOVERY_DEST) {
+					//dbg("Project1N", "Received a Neighbor Discovery packet\n");
 				} else {
 					dbg("Project1F", "Received packet meant for %d, sending to all neighbors %d %d %s \n", myMsg->dest, myMsg->src, myMsg->dest, myMsg->payload);
 				}
@@ -140,7 +144,7 @@ implementation{
 			if(arrListPushBack(&Received, tempReceive)) {
 				dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n", arrListSize(&Received));
 			} else {
-				dbg("Project1F", "\n\n\npacket could not be added to list\n\n\n");
+				dbg("Project1F", "---List is full, making room---\n");
 				//empty the list
 				pop_front(&Received);
 				if(!arrListPushBack(&Received, tempReceive))
@@ -148,58 +152,32 @@ implementation{
 			}
 
 			if(TOS_NODE_ID==myMsg->dest){
-				dbg("genDebug", "Packet from %d has arrived! Msg: %s\n", myMsg->src, myMsg->payload);
+				dbg("genDebug", "Packet from %d has arrived! Msg: %s\n\n", myMsg->src, myMsg->payload);
 				switch(myMsg->protocol){
 					uint8_t createMsg[PACKET_MAX_PAYLOAD_SIZE];
 					uint16_t dest;
-					//cases are named by the packet that was received, so the ping case is when you recieve a ping case, not when you send a ping case
 					case PROTOCOL_PING:
-						dbg("genDebug", "Sending Ping Reply to %d!\n", myMsg->src);
-						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, "rply", sizeof(myMsg->payload));
-						sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
+						printNeighbors();
+						dbg("genDebug", "Sending Ping Reply to %d!\n\n", myMsg->src);
+						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, myMsg->payload, sizeof(myMsg->payload));
+						sendBufferPushBack(&packBuffer, sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR);
 						post sendBufferTask();
-						tempSend.src = sendPackage.src;
-						tempSend.seq = sendPackage.seq;
-						
-						if(arrListPushBack(&Received, tempSend)) {
-							dbg("Project1F", "ping reply added to list of handled packets, will not reprocess %d\n\n", arrListSize(&Received));
-						} else {
-							dbg("Project1F", "packet could not be added to list\n\n");
-							//empty the list
-							pop_front(&Received);
-							if(!arrListPushBack(&Received, tempReceive))
-								dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
-						}
-				
 						break;
 
 					case PROTOCOL_PINGREPLY:
+						printNeighbors();
 						dbg("genDebug", "Received a Ping Reply from %d (%s)!\n\n", myMsg->src, myMsg->payload);
-						discoverNeighbors(sizeof(myMsg->payload));
 						break;
 						
 					case PROTOCOL_CMD:
-							//dbg("genDebug", "%s\n", &myMsg->payload);
 							switch(getCMD((uint8_t *) &myMsg->payload, sizeof(myMsg->payload))){
 								uint32_t temp=0;
 								case CMD_PING:
+									printNeighbors();
 									memcpy(&createMsg, (myMsg->payload) + PING_CMD_LENGTH, sizeof(myMsg->payload) - PING_CMD_LENGTH);
 									memcpy(&dest, (myMsg->payload)+ PING_CMD_LENGTH-2, sizeof(uint8_t));
 									makePack(&sendPackage, TOS_NODE_ID, (dest-48)&(0x00FF), MAX_TTL, PROTOCOL_PING, sequenceNum++, (uint8_t *)createMsg, sizeof(createMsg));
 									dbg("genDebug", "Ping packet Sent: %d %d %d %d %s\n", sendPackage.src, sendPackage.dest, sendPackage.seq, sendPackage.TTL, sendPackage.payload);
-									tempSend.src = sendPackage.src;
-									tempSend.seq = sendPackage.seq;
-									
-									if(arrListPushBack(&Received, tempSend)) {
-										dbg("Project1F", "ping packet added to list of handled packets, will not reprocess %d\n\n", arrListSize(&Received));
-									} else {
-										dbg("Project1F", "packet could not be added to list\n\n");
-										//empty the list
-										pop_front(&Received);
-										if(!arrListPushBack(&Received, tempReceive))
-											dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
-									}
-									//dbg("genDebug", "source : %d dest : %d payload : %s\n", sendPackage.src, sendPackage.dest, sendPackage.payload);
 									
 									//Place in Send Buffer
 									sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
@@ -219,21 +197,24 @@ implementation{
 						break;
 				}
 			}else if(TOS_NODE_ID==myMsg->src){
-				dbg("cmdDebug", "Source is this node: %s\n", myMsg->payload);
+				dbg("genDebug", "Source is this node: %s\n\n", myMsg->payload);
 				return msg;
 			} else if(myMsg->dest == DISCOVERY_DEST) {
 				switch(myMsg->protocol){
 					case PROTOCOL_PING:
-						dbg("Project1N", "Im Here\n");
+						makePack(&sendPackage, TOS_NODE_ID, DISCOVERY_DEST, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, "", sizeof(myMsg->payload));
+						sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, myMsg->src);
+						post sendBufferTask();
 						break;
 					case PROTOCOL_PINGREPLY:
+						discoveryList[myMsg->src] = call pingTimeoutTimer.getNow();
 						break;
 				}
 			} else {
-				//makePack(&sendPackage, myMsg->src, myMsg->dest, myMsg->TTL, myMsg->protocol, myMsg->seq, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
-				myMsg->payload[4] = (TOS_NODE_ID + 48);
-				sendBufferPushBack(&packBuffer, *myMsg, myMsg->src, AM_BROADCAST_ADDR);
+				makePack(&sendPackage, myMsg->src, myMsg->dest, myMsg->TTL, myMsg->protocol, myMsg->seq, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
+				sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
 				post sendBufferTask();
+				printNeighbors();
 				dbg("Project1F", "Packet broadcasted\n\n");
 			}
 			return msg;
@@ -267,6 +248,7 @@ implementation{
 	*	error_t - Returns SUCCESS, EBUSY when the system is too busy using the radio, or FAIL.
 	*/
 	error_t send(uint16_t src, uint16_t dest, pack *message){
+		pair tempSend;
 		if(!busy && isActive){
 			pack* msg = (pack *)(call Packet.getPayload(&pkt, sizeof(pack) ));			
 			*msg = *message;
@@ -277,6 +259,28 @@ implementation{
 
 			if(call AMSend.send(dest, &pkt, sizeof(pack)) ==SUCCESS){
 				busy = TRUE;
+
+				
+				/*
+				 * 
+				 * 
+				tempSend.src = message->src;
+				tempSend.seq = message->seq;
+				
+				if(!arrListContains(&Received, tempSend.src, tempSend.seq)){
+					if(arrListPushBack(&Received, tempSend)) {
+						dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n\n", arrListSize(&Received));
+					} else {
+						dbg("Project1F", "packet could not be added to list\n\n");
+						//empty the list
+						pop_front(&Received);
+						if(!arrListPushBack(&Received, tempSend))
+							dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
+					}
+				} else {
+					//you should reach this part of the if statement when you are rebroadcasting a packet that you just received.
+				}
+				*/
 				return SUCCESS;
 			}else{
 				dbg("genDebug","The radio is busy, or something\n");
@@ -298,10 +302,23 @@ implementation{
 		memcpy(Package->payload, payload, length);
 	}
 	
-	void discoverNeighbors(uint8_t len){
-		dbg("Project1N", "Broadcasting Discovery Ping\n");
-		makePack(&sendPackage, TOS_NODE_ID, DISCOVERY_DEST, MAX_TTL, PROTOCOL_PING, sequenceNum++, "", len);
-		sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
+	void discoverNeighbors(){
+		pack discoveryPack;
+		makePack(&discoveryPack, TOS_NODE_ID, DISCOVERY_DEST, MAX_TTL, PROTOCOL_PING, sequenceNum++, "", PACKET_MAX_PAYLOAD_SIZE);
+		sendBufferPushBack(&packBuffer, discoveryPack, discoveryPack.src, AM_BROADCAST_ADDR);
 		post sendBufferTask();
-	}	
+	}
+	
+	void printNeighbors() {
+		uint16_t i;
+		dbg("Project1N", "Connected Nodes : ");
+		for(i = 0; i < HASH_MAX_SIZE; i++) {
+			if(discoveryList[i]+PING_TIMEOUT < call pingTimeoutTimer.getNow()) {
+				//dbg("Project1N", "Node is Either not a neighbor or is timed out (so not a neighbor) %d %d\n", discoveryList[i], call pingTimeoutTimer.getNow());
+			} else {
+				dbg("Project1N", "%d ", i);
+			}
+		}
+		dbg("Project1N", "\n\n");
+	}
 }

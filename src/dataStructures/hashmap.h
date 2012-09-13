@@ -3,8 +3,8 @@
 //Description: A simple hashtable. Change the HASHMAP_TYPE to change the type being stored.
 #ifndef HASHMAP_H
 #define HASHMAP_H
-	
-typedef uint8_t hashType;
+
+typedef uint32_t hashType;
 
 enum{
 	HASH_MAX_SIZE = 20
