@@ -17,6 +17,7 @@ enum{
 	CMD_TEST_CLIENT=4,
 	CMD_TEST_SERVER=5,
 	CMD_KILL=6,
+	CMD_PRINT=7,
 	CMD_ERROR=66
 };
 
@@ -46,6 +47,12 @@ bool isPing(uint8_t *array, uint8_t size){
 	return FALSE;
 }
 
+bool isPrint(uint8_t *array, uint8_t size) {
+	if(array[4]=='p' && array[5]=='r' &&  array[6]=='i' && array[7]=='n'
+	&& array[8]=='t')return TRUE;
+	return FALSE;
+}
+
 /*
  * getCmd - processes a string to find out which command is being issued. A Command ID is returned based on the
  * enum declared. Also debugging information is sent to the cmdDebug channel.
@@ -72,6 +79,11 @@ int getCMD(uint8_t *array, uint8_t size){
 	if(isKill(array, size)){
 		dbg("cmdDebug", "Command Type: Kill Node\n");
 		return CMD_KILL;
+	}
+	
+	if(isPrint(array,size)) {
+		dbg("cmdDebug", "Command Type: Print\n");
+		return CMD_PRINT;
 	}
 	
 	dbg("cmdDebug", "CMD_ERROR: \"%s\" does not match any known commands.\n", array);

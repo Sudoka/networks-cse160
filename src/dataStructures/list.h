@@ -78,7 +78,7 @@ void arrListClear(arrlist* cur){	cur->numValues = 0;}
 
 dataType arrListGet(arrlist* cur, nx_uint8_t i){	return cur->values[i];}
 
-bool arrListContains(arrlist* list, uint8_t iSrc, uint8_t iSeq){
+bool arrListContains(arrlist* list, uint16_t iSrc, uint16_t iSeq){
 	uint8_t i=0;
 	for(i; i<list->numValues; i++){
 		if(iSeq == list->values[i].seq && iSrc == list->values[i].src) return TRUE;

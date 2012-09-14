@@ -4,8 +4,8 @@
 
 
 typedef struct pair{
-	uint8_t src;
-	uint8_t seq;
+	uint16_t src;
+	uint16_t seq;
 }pair;
 
 #endif

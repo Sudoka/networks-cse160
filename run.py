@@ -24,7 +24,7 @@ for line in f:
 # Channels used for debuging
 t.addChannel("genDebug", sys.stdout)
 t.addChannel("cmdDebug", sys.stdout);
-#t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
+t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
 t.addChannel("Project1N", sys.stdout) #Uncomment to enable Neighbor Discovery debug prints
 
 
@@ -63,7 +63,7 @@ def runTime(amount):
 #Create a Command Packet
 msg = pack()
 msg.set_TTL(15)
-msg.set_protocol(0)
+msg.set_protocol(99)
 msg.set_seq(0)
 
 pkt = t.newPacket()
@@ -94,11 +94,15 @@ runTime(250)
 #where is this send happening in code, i tried to make a debug print that would say "sending packet %s", msg
 #but i could not find the proper place in the Node.nc file 
 #id like to have 3 print segments per packet sent, a sending, a receiving, and a replying
-sendCMD("4 1 Hello World!",0)
+#sendCMD("4 1 Hello World!",0)
 #sendCMD("3 5 Hi Im Marbin")
 #sendCMD("1 16 What a world")
 
-#sendCMD("0 1 cmd ping 4 ping", 0)
+sendCMD("0 1 cmd ping 4 ping", 0)
+runTime(250)
+sendCMD("0 1 cmd print", 1)
+sendCMD("0 4 cmd print", 2)
 #sendCMD("0 1 cmd ping 4 marbin", 1)
 #sendCMD("0 4 cmd kill", 2)
 #sendCMD("0 1 cmd ping 4 marbout", 3)
+runTime(1000)
