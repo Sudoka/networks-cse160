@@ -4,15 +4,6 @@
  *
  * @author UCM ANDES Lab
  * @date   Apr 28 2012
- * 
- * 
- * for the broadcast how do we send it to all neighbors (with broadcast address) while still having a specific
- * node be the destination, do we have to put in another self made frame with a destination address.
- * 
- * does the sequence number change when its rebroadcasted?
- * 
- * for future projects are we going to need to be able to send some packets using flooding and some packets
- * with routing, i feel like the setup of the receive event is going to change for each of them
  */ 
 #include <Timer.h>
 #include "command.h"
@@ -49,7 +40,7 @@ module Node{
 
 implementation{
 	uint16_t DISCOVERY_DEST = AM_BROADCAST_ADDR;
-	uint16_t DISCOVERY_TIMER_PERIOD = 10003; //dayum, thats one big prime number
+	uint16_t DISCOVERY_TIMER_PERIOD = 10003; //dayum, thats one big prime number, o wait i lied
 	
 	uint16_t sequenceNum = 0;
 	uint16_t discoveryCounter = 0;
@@ -82,8 +73,6 @@ implementation{
 		call AMControl.start();
 		
 		dbg("genDebug", "Booted\n");
-		//if(TOS_NODE_ID == 2)
-		//	discoverNeighbors(PACKET_MAX_PAYLOAD_SIZE);	
 	}
 
 	event void AMControl.startDone(error_t err){
@@ -106,13 +95,16 @@ implementation{
 	
 	event void discoveryTimer.fired() {
 		discoverNeighbors();
+		discoveryCounter++;
 	}
 	
 	
 	event void AMSend.sendDone(message_t* msg, error_t error){
 		//Clear Flag, we can send again.
+		pack* dest = (pack*) msg->data;
 		if(&pkt == msg){
-			//dbg("Project1F", "Send Done\n\n");
+			if(dest->dest != DISCOVERY_DEST)
+				dbg("Project1F", "Send Complete src:%d dest:%d seq:%d protocol:%d TTL:%d data:%s\n\n", dest->src, dest->dest, dest->seq, dest->protocol, dest->TTL, dest->payload);
 			busy = FALSE;
 			post sendBufferTask();
 		}
@@ -129,8 +121,6 @@ implementation{
 			
 			tempReceive.src = myMsg->src;
 			tempReceive.seq = myMsg->seq;
-			
-			//dbg("Project1F", "Packet Received. Status : ");
 			
 			if(arrListContains(&Received, myMsg->src, myMsg->seq)) {
 				dbg("Project1F", "Received a previously forwarded, sent, or received packet. Discarding MSG : %s Seq : %d\n\n", myMsg->payload, myMsg->seq);
@@ -149,7 +139,6 @@ implementation{
 				if(arrListPushBack(&Received, tempReceive)) {
 					dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n", arrListSize(&Received));
 				} else {
-					//dbg("Project1F", "---List is full, making room---\n");
 					//empty the list
 					pop_front(&Received);
 					if(!arrListPushBack(&Received, tempReceive))
@@ -215,13 +204,15 @@ implementation{
 					case PROTOCOL_PINGREPLY:
 						discoveryList[myMsg->src] = call pingTimeoutTimer.getNow();
 						updateNeighbors();
+						if(discoveryCounter%20 == 0)
+							printNeighbors();  
 						break;
 				}
 			} else {
 				makePack(&sendPackage, myMsg->src, myMsg->dest, myMsg->TTL, myMsg->protocol, myMsg->seq, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
 				sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
 				post sendBufferTask();
-				dbg("Project1F", "Packet broadcasted\n\n");
+				dbg("Project1F", "Will Broadcast Packet\n\n");
 			}
 			return msg;
 		}
@@ -265,28 +256,6 @@ implementation{
 
 			if(call AMSend.send(dest, &pkt, sizeof(pack)) ==SUCCESS){
 				busy = TRUE;
-
-				
-				/*
-				 * 
-				 * 
-				tempSend.src = message->src;
-				tempSend.seq = message->seq;
-				
-				if(!arrListContains(&Received, tempSend.src, tempSend.seq)){
-					if(arrListPushBack(&Received, tempSend)) {
-						dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n\n", arrListSize(&Received));
-					} else {
-						dbg("Project1F", "packet could not be added to list\n\n");
-						//empty the list
-						pop_front(&Received);
-						if(!arrListPushBack(&Received, tempSend))
-							dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
-					}
-				} else {
-					//you should reach this part of the if statement when you are rebroadcasting a packet that you just received.
-				}
-				*/
 				return SUCCESS;
 			}else{
 				dbg("genDebug","The radio is busy, or something\n");
@@ -317,10 +286,9 @@ implementation{
 	
 	void updateNeighbors() {
 		uint16_t i;
-		//dbg("Project1N", "Updating neighbor list\n");
 		nodeListClear(&neighbors);
 		for(i = 0; i < HASH_MAX_SIZE; i++) {
-			if(discoveryList[i]+100009 < call pingTimeoutTimer.getNow()) {
+			if(discoveryList[i]+100009 < call pingTimeoutTimer.getNow() || discoveryList[i] == 0) {
 				//node is not a neighbor or has timed out
 			} else {
 				nodeListPushBack(&neighbors, i);
