@@ -13,14 +13,18 @@
 #include "packBuffer.h"
 #include "dataStructures/hashmap.h"
 #include "dataStructures/nodeList.h"
+#include "dataStructures/hopList.h"
 
 //Ping Includes
 #include "dataStructures/pingList.h"
 #include "ping.h"
 
+#define MAX_NUM_NODES 20
 
-
-
+typedef struct nodeMap {
+	uint8_t seq[20];
+	nodeList linkState[20];
+} nodeMap;
 
 module Node{
 	uses interface Boot;
@@ -42,7 +46,7 @@ implementation{
 	uint16_t DISCOVERY_DEST = AM_BROADCAST_ADDR;
 	uint16_t DISCOVERY_TIMER_PERIOD = 10003; //dayum, thats one big prime number, o wait i lied
 	
-	uint16_t sequenceNum = 0;
+	uint16_t sequenceNum = 0, linkStateSeq = 0;//have a second link state sequence to prevent wraping, may need to change this but im rolling with it for now
 	uint16_t discoveryCounter = 0;
 
 	bool busy = FALSE;
@@ -57,21 +61,26 @@ implementation{
 
 	//Ping/PingReply Variables
 	pingList pings;
-	uint32_t discoveryList[20];
+	uint32_t discoveryList[MAX_NUM_NODES];
 	nodeList neighbors;
+	nodeMap networkMap;
+	hopList confirmed;
 	
 	error_t send(uint16_t src, uint16_t dest, pack *message);
 	void makePack(pack *Package, uint16_t src, uint16_t dest, uint8_t TTL, uint8_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
 	void discoverNeighbors();
 	void updateNeighbors();
-	void printNeighbors();
+	void printNeighbors(uint16_t nodeID, nodeList nodeNeighbors);
+	void sendLSP();
+	uint8_t countNodes(nodeMap map);
+	void dijkstra();
+	void forward(pack *);
 	
 	task void sendBufferTask();
 			
 	
 	event void Boot.booted(){
 		call AMControl.start();
-		
 		dbg("genDebug", "Booted\n");
 	}
 
@@ -96,6 +105,8 @@ implementation{
 	event void discoveryTimer.fired() {
 		discoverNeighbors();
 		discoveryCounter++;
+		if(discoveryCounter%10)
+			sendLSP();
 	}
 	
 	
@@ -103,6 +114,7 @@ implementation{
 		//Clear Flag, we can send again.
 		pack* dest = (pack*) msg->data;
 		if(&pkt == msg){
+			//dbg("Project2", "got here \n");
 			if(dest->dest != DISCOVERY_DEST)
 				dbg("Project1F", "Send Complete src:%d dest:%d seq:%d protocol:%d TTL:%d data:%s\n\n", dest->src, dest->dest, dest->seq, dest->protocol, dest->TTL, dest->payload);
 			busy = FALSE;
@@ -123,7 +135,7 @@ implementation{
 			tempReceive.seq = myMsg->seq;
 			
 			if(arrListContains(&Received, myMsg->src, myMsg->seq)) {
-				dbg("Project1F", "Received a previously forwarded, sent, or received packet. Discarding MSG : %s Seq : %d\n\n", myMsg->payload, myMsg->seq);
+				//dbg("Project1F", "Received a previously forwarded, sent, or received packet. Discarding MSG : %s Seq : %d\n\n", myMsg->payload, myMsg->seq);
 				return msg;
 			} else {
 				if(TOS_NODE_ID == myMsg->dest) {
@@ -135,7 +147,9 @@ implementation{
 				}
 			}
 			
-			if(myMsg->dest != DISCOVERY_DEST) {
+			if(myMsg->dest == DISCOVERY_DEST && myMsg->protocol != PROTOCOL_LINKSTATE) {
+				//received a discovery packet
+			} else {
 				if(arrListPushBack(&Received, tempReceive)) {
 					dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n", arrListSize(&Received));
 				} else {
@@ -154,8 +168,9 @@ implementation{
 					case PROTOCOL_PING:
 						dbg("genDebug", "Sending Ping Reply to %d!\n\n", myMsg->src);
 						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, myMsg->payload, sizeof(myMsg->payload));
-						sendBufferPushBack(&packBuffer, sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR);
-						post sendBufferTask();
+						forward(&sendPackage);
+						//sendBufferPushBack(&packBuffer, sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR);
+						//post sendBufferTask();
 						break;
 
 					case PROTOCOL_PINGREPLY:
@@ -170,9 +185,10 @@ implementation{
 									memcpy(&dest, (myMsg->payload)+ PING_CMD_LENGTH-2, sizeof(uint8_t));
 									makePack(&sendPackage, TOS_NODE_ID, (dest-48)&(0x00FF), MAX_TTL, PROTOCOL_PING, sequenceNum++, (uint8_t *)createMsg, sizeof(createMsg));
 									dbg("genDebug", "Ping packet Sent: %d %d %d %d %s\n\n", sendPackage.src, sendPackage.dest, sendPackage.seq, sendPackage.TTL, sendPackage.payload);
-									
+									//forward(&sendPackage);
+									//find the retrieve address of next hop, (what if there isnt one? what if its because list isnt set up? what if its because there is no route to that node?)
 									//Place in Send Buffer
-									sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
+									sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, 2);
 									post sendBufferTask();
 									
 									break;
@@ -182,7 +198,17 @@ implementation{
 								case CMD_ERROR:
 									break;
 								case CMD_PRINT:
-									printNeighbors();
+									printNeighbors(TOS_NODE_ID, neighbors);
+									break;
+								case CMD_LSP:
+									for(temp = 0; temp < MAX_NUM_NODES; temp++) {
+										if(networkMap.linkState[temp].numValues > 0)
+											printNeighbors(temp, networkMap.linkState[temp]);
+									}
+									dijkstra();
+									for(temp = 0; temp < MAX_NUM_NODES; temp++) {
+										dbg("Project2", "Node :%d next hop is Node : %d\n", temp, confirmed.entry[temp].nextHop);
+									}
 									break;
 								default:
 									break;
@@ -192,9 +218,11 @@ implementation{
 						break;
 				}
 			}else if(TOS_NODE_ID==myMsg->src){
-				dbg("genDebug", "Source is this node: %s\n\n", myMsg->payload);
+				dbg("cmdDebug", "Source is this node: %s\n\n", myMsg->payload);
 				return msg;
 			} else if(myMsg->dest == DISCOVERY_DEST) {
+				uint8_t i;
+				nodeList * receivedList;
 				switch(myMsg->protocol){
 					case PROTOCOL_PING:
 						makePack(&sendPackage, TOS_NODE_ID, DISCOVERY_DEST, 1, PROTOCOL_PINGREPLY, sequenceNum++, "", sizeof(myMsg->payload));
@@ -204,14 +232,23 @@ implementation{
 					case PROTOCOL_PINGREPLY:
 						discoveryList[myMsg->src] = call pingTimeoutTimer.getNow();
 						updateNeighbors();
-						if(discoveryCounter%20 == 0)
-							printNeighbors();  
+						break;
+					case PROTOCOL_LINKSTATE:
+						receivedList = (nodeList *) myMsg->payload;
+						//dbg("Project2", "Received a LinkState Packet %d\n", receivedList->numValues);
+						if(myMsg->seq >= networkMap.seq[myMsg->src]) {
+							memcpy(&networkMap.linkState[myMsg->src], myMsg->payload, MAX_NUM_NODES);
+							networkMap.seq[myMsg->src] = myMsg->seq;
+							//printNeighbors(myMsg->src, networkMap.linkState[myMsg->src]);
+							sendBufferPushBack(&packBuffer, *myMsg, TOS_NODE_ID, AM_BROADCAST_ADDR);
+						}
 						break;
 				}
 			} else {
 				makePack(&sendPackage, myMsg->src, myMsg->dest, myMsg->TTL, myMsg->protocol, myMsg->seq, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
-				sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
-				post sendBufferTask();
+				forward(myMsg);
+				//sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
+				//post sendBufferTask();
 				dbg("Project1F", "Will Broadcast Packet\n\n");
 			}
 			return msg;
@@ -219,6 +256,14 @@ implementation{
 
 		dbg("genDebug", "Unknown Packet Type\n");
 		return msg;
+	}
+	
+	void forward(pack * packet) {
+		uint8_t nextHop;
+		dijkstra();
+		nextHop = confirmed.entry[packet->dest].nextHop;
+		sendBufferPushBack(&packBuffer, *packet, TOS_NODE_ID, nextHop);
+		post sendBufferTask();
 	}
 	
 	task void sendBufferTask(){
@@ -287,19 +332,81 @@ implementation{
 	void updateNeighbors() {
 		uint16_t i;
 		nodeListClear(&neighbors);
-		for(i = 0; i < HASH_MAX_SIZE; i++) {
-			if(discoveryList[i]+100009 < call pingTimeoutTimer.getNow() || discoveryList[i] == 0) {
-				//node is not a neighbor or has timed out
-			} else {
+		for(i = 0; i < MAX_NUM_NODES; i++) {
+			if(discoveryList[i] != 0) {
 				nodeListPushBack(&neighbors, i);
 			}
 		}
 	}
 	
-	void printNeighbors() {
+	void sendLSP() {
+		pack lspPack;
+		//dbg("Project2", "size : %d\n", neighbors.numValues);
+		makePack(&lspPack, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKSTATE, sequenceNum++, &neighbors, sizeof(neighbors));
+		sendBufferPushBack(&packBuffer, lspPack, lspPack.src, AM_BROADCAST_ADDR);
+		//add one entry per neighbor with their id and seq of this packet to be checked for ack
+		post sendBufferTask();
+		memcpy(&networkMap.linkState[TOS_NODE_ID], &neighbors, MAX_NUM_NODES);
+		networkMap.seq[TOS_NODE_ID] = sequenceNum;
+	}
+	
+	void dijkstra() {
+		//make two next hop lists, one is global (confirmed) one is local (tenative)
+		//add the current node to the global confirmed list, nextHop = none (-1)
+		//for each node in the network
+		hopList tenative;
+		uint8_t lastNode = TOS_NODE_ID;
+		uint8_t i, minCost, minNode, curNode;
+		uint8_t totalNum = countNodes(networkMap), curNum = 1;
+		clearHopList(&tenative);
+		clearHopList(&confirmed);
+		hopListAdd(&confirmed, TOS_NODE_ID, 0, TOS_NODE_ID);
+		tenative.entry[lastNode].confirmed = 1;
+		for(i = 0; i < networkMap.linkState[lastNode].numValues; i++) {
+			hopListAdd(&tenative, networkMap.linkState[lastNode].values[i], 1, networkMap.linkState[lastNode].values[i]);
+		}
+		while(totalNum > curNum) {
+			//find lowest non confirmed cost on tenative list
+			minCost = 0xFF;
+			minNode = 0xFF;
+			for(i = 0; i < MAX_NUM_NODES; i++) {
+				if(!tenative.entry[i].confirmed && tenative.entry[i].cost < minCost) {
+					minCost = tenative.entry[i].cost;
+					minNode = i;
+				}
+			}
+			//put it on confirmed, set to confirmed on tenative
+			hopListAdd(&confirmed, minNode, minCost, tenative.entry[minNode].nextHop);
+			tenative.entry[minNode].confirmed = 1;
+			lastNode = minNode;
+			//loop through neighbors to update tenative list
+			for(i = 0; i < networkMap.linkState[lastNode].numValues; i++) {
+				curNode = networkMap.linkState[lastNode].values[i];
+				if(!tenative.entry[curNode].confirmed && (minCost + 1) < tenative.entry[curNode].cost) {
+					hopListAdd(&tenative, curNode, (minCost + 1), confirmed.entry[lastNode].nextHop);
+				}
+			}
+			curNum++;
+		}
+	}
+	
+	uint8_t countNodes(nodeMap map) {
+		uint8_t i,j;
+		nodeList counter;
+		for(i = 0; i < MAX_NUM_NODES; i++) {
+			for(j = 0; j < map.linkState[i].numValues; j++) {
+				if(!nodeListContains(&counter, map.linkState[i].values[j]))
+					nodeListPushBack(&counter, map.linkState[i].values[j]);
+			}
+		}
+		return counter.numValues;
+	}
+	
+	void printNeighbors(uint16_t nodeID, nodeList nodeNeighbors) {
 		uint8_t i;
-		for(i = 0; i < neighbors.numValues; i++) {
-			dbg("Project1N", "Connected to : %d %d\n", neighbors.values[i], discoveryList[neighbors.values[i]]);
-		} 
+		for(i = 0; i < nodeNeighbors.numValues; i++) {
+			dbg("Project2", "%d is connected to Node:%d\n", nodeID, nodeNeighbors.values[i]);
+			dbg("Project1N", "Connected to : %d %d\n", i, discoveryList[i]);
+		}
 	}		
 }

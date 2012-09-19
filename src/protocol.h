@@ -8,7 +8,7 @@
 enum{
 	PROTOCOL_PING = 0,
 	PROTOCOL_PINGREPLY = 1,
-	PROTOCOL_LINKEDLIST = 2,
+	PROTOCOL_LINKSTATE = 2,
 	PROTOCOL_NAME = 3,
 	PROTOCOL_TCP= 4,
 	PROTOCOL_CMD = 99
@@ -22,8 +22,8 @@ void printProtocolType(int16_t protocol){
 		case PROTOCOL_PINGREPLY:
 			dbg("protocol", "Protocol Type: PING REPLY");
 			break;
-		case PROTOCOL_LINKEDLIST:
-			dbg("protocol", "Protocol Type: LINKED LIST");
+		case PROTOCOL_LINKSTATE:
+			dbg("protocol", "Protocol Type: LINK STATE PACKET");
 			break;
 		case PROTOCOL_NAME:
 			dbg("protocol", "Protocol Type: NAME");

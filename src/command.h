@@ -18,6 +18,7 @@ enum{
 	CMD_TEST_SERVER=5,
 	CMD_KILL=6,
 	CMD_PRINT=7,
+	CMD_LSP=8,
 	CMD_ERROR=66
 };
 
@@ -53,6 +54,11 @@ bool isPrint(uint8_t *array, uint8_t size) {
 	return FALSE;
 }
 
+bool isLSP(uint8_t *array, uint8_t size) {
+	if(array[4]=='l' && array[5]=='s' &&  array[6]=='p') return TRUE;
+	return FALSE;
+}
+
 /*
  * getCmd - processes a string to find out which command is being issued. A Command ID is returned based on the
  * enum declared. Also debugging information is sent to the cmdDebug channel.
@@ -84,6 +90,11 @@ int getCMD(uint8_t *array, uint8_t size){
 	if(isPrint(array,size)) {
 		dbg("cmdDebug", "Command Type: Print\n");
 		return CMD_PRINT;
+	}
+	
+	if(isLSP(array,size)) {
+		dbg("cmdDebug", "Command Type: LSP\n");
+		return CMD_LSP;
 	}
 	
 	dbg("cmdDebug", "CMD_ERROR: \"%s\" does not match any known commands.\n", array);

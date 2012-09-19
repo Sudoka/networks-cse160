@@ -1,8 +1,8 @@
 #ifndef NODE_LIST_H
 #define NODE_LIST_H
 
-typedef uint16_t ndataType;
-#define ARRAYSIZE 30
+typedef uint8_t ndataType;
+#define ARRAYSIZE 19
 #define MAXNUMVALS ARRAYSIZE
 
 typedef struct nodeList
@@ -50,6 +50,18 @@ ndataType pop_frontNode(nodeList* cur){
 	}
 	--cur->numValues;
 	return returnVal;			
+}
+
+ndataType pop_Node(nodeList* cur, uint8_t indexx) {
+	ndataType returnVal;
+	nx_uint8_t i;	
+	returnVal = cur->values[indexx];
+	for(i = indexx + 1; i < cur->numValues; ++i)
+	{
+		cur->values[i-1] = cur->values[i];
+	}
+	--cur->numValues;
+	return returnVal;
 }
 
 ndataType frontNode(nodeList* cur)
