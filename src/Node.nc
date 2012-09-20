@@ -63,6 +63,7 @@ implementation{
 	pingList pings;
 	uint32_t discoveryList[MAX_NUM_NODES];
 	nodeList neighbors;
+	nodeList allNodes;
 	nodeMap networkMap;
 	hopList confirmed;
 	
@@ -75,6 +76,7 @@ implementation{
 	uint8_t countNodes(nodeMap map);
 	void dijkstra();
 	void forward(pack *);
+	uint32_t NumberOfSetBits(uint32_t i);
 	
 	task void sendBufferTask();
 			
@@ -105,7 +107,7 @@ implementation{
 	event void discoveryTimer.fired() {
 		discoverNeighbors();
 		discoveryCounter++;
-		if(discoveryCounter%10)
+		if(discoveryCounter%5)
 			sendLSP();
 	}
 	
@@ -124,7 +126,7 @@ implementation{
 
 	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
 		if(!isActive){
-			dbg("genDebug", "The Node is inactive, packet will not be read.\n");
+			//dbg("genDebug", "The Node is inactive, packet will not be read.\n");
 			return msg;	
 		}
 		if(len==sizeof(pack)){
@@ -151,12 +153,14 @@ implementation{
 				//received a discovery packet
 			} else {
 				if(arrListPushBack(&Received, tempReceive)) {
-					dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n", arrListSize(&Received));
+					//dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n", arrListSize(&Received));
 				} else {
 					//empty the list
 					pop_front(&Received);
 					if(!arrListPushBack(&Received, tempReceive))
 						dbg("Project1F", "Unknown failure to add packet to list of handled packets\n");
+					//else
+						//dbg("Project1F", "Packet Added to list of handled packets, will not reprocess %d\n", arrListSize(&Received));
 				}
 			}
 
@@ -185,11 +189,12 @@ implementation{
 									memcpy(&dest, (myMsg->payload)+ PING_CMD_LENGTH-2, sizeof(uint8_t));
 									makePack(&sendPackage, TOS_NODE_ID, (dest-48)&(0x00FF), MAX_TTL, PROTOCOL_PING, sequenceNum++, (uint8_t *)createMsg, sizeof(createMsg));
 									dbg("genDebug", "Ping packet Sent: %d %d %d %d %s\n\n", sendPackage.src, sendPackage.dest, sendPackage.seq, sendPackage.TTL, sendPackage.payload);
-									//forward(&sendPackage);
+									
+									forward(&sendPackage);
 									//find the retrieve address of next hop, (what if there isnt one? what if its because list isnt set up? what if its because there is no route to that node?)
 									//Place in Send Buffer
-									sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, 2);
-									post sendBufferTask();
+									//sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, 2);
+									//post sendBufferTask();
 									
 									break;
 								case CMD_KILL:
@@ -250,6 +255,7 @@ implementation{
 				//sendBufferPushBack(&packBuffer, sendPackage, sendPackage.src, AM_BROADCAST_ADDR);
 				//post sendBufferTask();
 				dbg("Project1F", "Will Broadcast Packet\n\n");
+				dbg("Project2", "Forwarding Packet. Src:%d Dest:%d NextHop:%d TTL:%d protocol:%d Seq:%d Payload:%s\n\n", myMsg->src, myMsg->dest, confirmed.entry[myMsg->dest].nextHop, myMsg->TTL, myMsg->protocol, myMsg->seq, myMsg->payload);
 			}
 			return msg;
 		}
@@ -262,8 +268,14 @@ implementation{
 		uint8_t nextHop;
 		dijkstra();
 		nextHop = confirmed.entry[packet->dest].nextHop;
-		sendBufferPushBack(&packBuffer, *packet, TOS_NODE_ID, nextHop);
-		post sendBufferTask();
+		if(nextHop == 255) {
+			dbg("Project2", "---There is no path to the destination---\n\n");
+		} else if (nextHop == TOS_NODE_ID) {
+			dbg("Project2", "Why are you trying to send to yourself?\n");
+		} else {
+			sendBufferPushBack(&packBuffer, *packet, TOS_NODE_ID, nextHop);
+			post sendBufferTask();
+		}
 	}
 	
 	task void sendBufferTask(){
@@ -333,7 +345,7 @@ implementation{
 		uint16_t i;
 		nodeListClear(&neighbors);
 		for(i = 0; i < MAX_NUM_NODES; i++) {
-			if(discoveryList[i] != 0) {
+			if(discoveryList[i] != 0 && (call pingTimeoutTimer.getNow() - discoveryList[i]) < (20 * DISCOVERY_TIMER_PERIOD)) {
 				nodeListPushBack(&neighbors, i);
 			}
 		}
@@ -351,55 +363,62 @@ implementation{
 	}
 	
 	void dijkstra() {
-		//make two next hop lists, one is global (confirmed) one is local (tenative)
-		//add the current node to the global confirmed list, nextHop = none (-1)
-		//for each node in the network
 		hopList tenative;
-		uint8_t lastNode = TOS_NODE_ID;
-		uint8_t i, minCost, minNode, curNode;
-		uint8_t totalNum = countNodes(networkMap), curNum = 1;
+		uint8_t lastNode = TOS_NODE_ID, i, minCost, minNode, curNode, curTenative = 0;
 		clearHopList(&tenative);
 		clearHopList(&confirmed);
 		hopListAdd(&confirmed, TOS_NODE_ID, 0, TOS_NODE_ID);
-		tenative.entry[lastNode].confirmed = 1;
-		for(i = 0; i < networkMap.linkState[lastNode].numValues; i++) {
-			hopListAdd(&tenative, networkMap.linkState[lastNode].values[i], 1, networkMap.linkState[lastNode].values[i]);
+		tenative.entry[lastNode].confirmed = 1; //add self as best hop to self
+		for(i = 0; i < networkMap.linkState[lastNode].numValues; i++) { // add my neighbors as next best hops
+			if(nodeListContains(&networkMap.linkState[networkMap.linkState[lastNode].values[i]], lastNode)) {
+				hopListAdd(&tenative, networkMap.linkState[lastNode].values[i], 1, networkMap.linkState[lastNode].values[i]);
+				curTenative++;
+			}
 		}
-		while(totalNum > curNum) {
-			//find lowest non confirmed cost on tenative list
+		while(curTenative > 0) {
 			minCost = 0xFF;
-			minNode = 0xFF;
 			for(i = 0; i < MAX_NUM_NODES; i++) {
 				if(!tenative.entry[i].confirmed && tenative.entry[i].cost < minCost) {
-					minCost = tenative.entry[i].cost;
+					minCost = tenative.entry[i].cost; //find node with cheapest cost
 					minNode = i;
 				}
 			}
-			//put it on confirmed, set to confirmed on tenative
 			hopListAdd(&confirmed, minNode, minCost, tenative.entry[minNode].nextHop);
-			tenative.entry[minNode].confirmed = 1;
+			tenative.entry[minNode].confirmed = 1; //add cheapest neighbor to confirmed, its garunteed to be best hop to itself
+			curTenative--;
 			lastNode = minNode;
-			//loop through neighbors to update tenative list
 			for(i = 0; i < networkMap.linkState[lastNode].numValues; i++) {
-				curNode = networkMap.linkState[lastNode].values[i];
-				if(!tenative.entry[curNode].confirmed && (minCost + 1) < tenative.entry[curNode].cost) {
-					hopListAdd(&tenative, curNode, (minCost + 1), confirmed.entry[lastNode].nextHop);
+				curNode = networkMap.linkState[lastNode].values[i]; //go through all of the previous cheapest nodes's neighbors and look for cheaper / new routes to any of the nodes its connected to
+				if(nodeListContains(&networkMap.linkState[curNode], lastNode)) {
+					if(!tenative.entry[curNode].confirmed && (minCost + 1) < tenative.entry[curNode].cost) {
+						hopListAdd(&tenative, curNode, (minCost + 1), confirmed.entry[lastNode].nextHop);
+						curTenative++;
+					}
 				}
 			}
-			curNum++;
 		}
 	}
 	
 	uint8_t countNodes(nodeMap map) {
 		uint8_t i,j;
-		nodeList counter;
+		nodeListClear(&allNodes);
 		for(i = 0; i < MAX_NUM_NODES; i++) {
 			for(j = 0; j < map.linkState[i].numValues; j++) {
-				if(!nodeListContains(&counter, map.linkState[i].values[j]))
-					nodeListPushBack(&counter, map.linkState[i].values[j]);
+				if(!nodeListContains(&allNodes, map.linkState[i].values[j])) {
+					nodeListPushBack(&allNodes, map.linkState[i].values[j]);
+				}
 			}
 		}
-		return counter.numValues;
+		return allNodes.numValues;
+	}
+
+	//found this here http://stackoverflow.com/questions/109023/best-algorithm-to-count-the-number-of-set-bits-in-a-32-bit-integer
+	//just gonna use this for my rolling average i can rewrite my own version later this just saved me 10
+	//minutes and is probably better than anything i could write
+	uint32_t NumberOfSetBits(uint32_t i) {
+	    i = i - ((i >> 1) & 0x55555555);
+	    i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+	    return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 	}
 	
 	void printNeighbors(uint16_t nodeID, nodeList nodeNeighbors) {

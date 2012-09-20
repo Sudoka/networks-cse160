@@ -24,7 +24,7 @@ for line in f:
 # Channels used for debuging
 t.addChannel("genDebug", sys.stdout)
 #t.addChannel("cmdDebug", sys.stdout);
-t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
+#t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
 #t.addChannel("Project1N", sys.stdout) #Uncomment to enable Neighbor Discovery debug prints
 t.addChannel("Project2", sys.stdout) #uncomment to enable Link State Routing debug prints
 
@@ -99,9 +99,18 @@ runTime(250)
 #sendCMD("3 5 Hi Im Marbin")
 #sendCMD("1 16 What a world")
 
-sendCMD("0 1 cmd ping 6 ping", 0)
+#sendCMD("0 2 cmd lsp", 0)
+sendCMD("0 1 cmd ping 5 ping", 1)
 runTime(250)
-sendCMD("0 4 cmd lsp", 1)
+sendCMD("0 6 cmd kill", 1)
+runTime(250) 	#this length of time is important, if i set my timeout to 24 times my discovery period i 
+				#correctly timeout my neighbor, if i set it to 25 i do not! as long as this is more than 
+				#10x as much as the timeout period the network will reorder, the lower i make my timeout 
+				#period the less stable the network though due to the high collision nature of the neighbor 
+				#discovery packets. if i wanted it to be approximately the same as the timeout multiplier i
+				#i would need to change the period from 10003 to 1003
+#runTime(1000)
+sendCMD("0 1 cmd ping 5 ping", 3)
 #sendCMD("0 1 cmd print", 1)
 #sendCMD("0 4 cmd print", 2)
 #sendCMD("0 1 cmd ping 4 marbin", 1)
