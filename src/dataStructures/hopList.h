@@ -2,7 +2,7 @@
 #define HOP_LIST_H
 
 typedef struct hopEntry {
-	uint8_t cost;
+	float cost;
 	uint8_t nextHop;
 	uint8_t confirmed;
 } hopEntry;
@@ -11,7 +11,7 @@ typedef struct hopList {
 	hopEntry entry[20];
 } hopList;
 
-void hopListAdd(hopList * list, uint8_t nodeID, uint8_t cost, uint8_t nextHop) {
+void hopListAdd(hopList * list, uint8_t nodeID, float cost, uint8_t nextHop) {
 	list->entry[nodeID].cost = cost;
 	list->entry[nodeID].nextHop = nextHop;
 }
@@ -19,7 +19,7 @@ void hopListAdd(hopList * list, uint8_t nodeID, uint8_t cost, uint8_t nextHop) {
 void clearHopList(hopList * list) {
 	uint8_t i;
 	for(i = 0; i < 20; i++) {
-		list->entry[i].cost = 0xFF;
+		list->entry[i].cost = 144.0;
 		list->entry[i].nextHop = -1;
 		list->entry[i].confirmed = 0;
 	}

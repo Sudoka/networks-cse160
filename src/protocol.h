@@ -11,6 +11,7 @@ enum{
 	PROTOCOL_LINKSTATE = 2,
 	PROTOCOL_NAME = 3,
 	PROTOCOL_TCP= 4,
+	PROTOCOL_LINKRELY = 5,
 	PROTOCOL_CMD = 99
 };
 
@@ -24,6 +25,9 @@ void printProtocolType(int16_t protocol){
 			break;
 		case PROTOCOL_LINKSTATE:
 			dbg("protocol", "Protocol Type: LINK STATE PACKET");
+			break;
+		case PROTOCOL_LINKRELY:
+			dbg("protocol", "Protocol Type: LINK RELIABILITY PACKET");
 			break;
 		case PROTOCOL_NAME:
 			dbg("protocol", "Protocol Type: NAME");

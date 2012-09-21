@@ -7,7 +7,7 @@ from packet import *
 import sys
 import random
 
-numNodes = 6
+numNodes = 5
 seq = 0
 
 t = Tossim([])
@@ -102,13 +102,16 @@ runTime(250)
 #sendCMD("0 2 cmd lsp", 0)
 sendCMD("0 1 cmd ping 5 ping", 1)
 runTime(250)
-sendCMD("0 6 cmd kill", 1)
-runTime(250) 	#this length of time is important, if i set my timeout to 24 times my discovery period i 
+sendCMD("0 2 cmd kill", 1)
+#sendCMD("0 3 cmd kill", 2)
+runTime(150) 	#this length of time is important, if i set my timeout to 24 times my discovery period i 
 				#correctly timeout my neighbor, if i set it to 25 i do not! as long as this is more than 
 				#10x as much as the timeout period the network will reorder, the lower i make my timeout 
 				#period the less stable the network though due to the high collision nature of the neighbor 
 				#discovery packets. if i wanted it to be approximately the same as the timeout multiplier i
-				#i would need to change the period from 10003 to 1003
+				#i would need to change the period from 10003 to 1003 
+				
+				# ^ meta comment on above comment, true but the numbers are outdated, updates even faster now!
 #runTime(1000)
 sendCMD("0 1 cmd ping 5 ping", 3)
 #sendCMD("0 1 cmd print", 1)
