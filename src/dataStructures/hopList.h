@@ -99,4 +99,22 @@ bool hopListContains(hopList* list, uint8_t value){
 	}
 	return FALSE;
 }
+
+void hopListSort(hopList * list) {
+	bool swapped;
+	hopEntry temp;
+	uint8_t i, n = list->numValues;
+	do {
+		swapped = FALSE;
+		for(i = 1; i < n; i++) {
+			if(list->values[i-1].nodeID > list->values[i].nodeID) {
+				temp = list->values[i-1];
+				list->values[i-1] = list->values[i];
+				list->values[i] = temp;
+				swapped = TRUE;
+			}
+		}
+		n--;
+	} while(swapped);
+}
 #endif /* HOP_LIST_H */

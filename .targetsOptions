@@ -4,7 +4,9 @@
 <default>true</default>
 <project/>
 <target>micaz</target>
-<make-extras/>
+<make-extras>
+<extra name="sim"/>
+</make-extras>
 <includes/>
 <excludes>
 <exclude>.*\.svn.*</exclude>
@@ -14,7 +16,7 @@
 <boards/>
 <no-std-incl>false</no-std-incl>
 <component/>
-<component-file>/projNOT/src/Node.nc</component-file>
+<component-file>/Project2DV/src/NodeC.nc</component-file>
 <include-last-build>true</include-last-build>
 <include-env-default-paths>true</include-env-default-paths>
 <environment_variables/>
