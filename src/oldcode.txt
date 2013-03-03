@@ -1,0 +1,141 @@
+command void TCPManager.handlePacket(void *payload){
+		uint8_t i;
+		pack * myMsg;
+		transport * data;
+		myMsg = (pack *) payload;
+		data = (transport *) myMsg->payload;
+		dbg_clear("genDebug","\n\n");
+		dbg("genDebug", "received TCP Packet for port:%d at time:%d\n", data->destPort, call socketTimer.getNow());
+		printTransport(data);
+		for(i = 0; i < MAXSOCKETS; i++) {
+			if(socks[i].localPort == data->destPort) {
+				dbg("genDebug", "sock with port %d is at index %d\n", data->destPort, i);
+				switch(socks[i].state) {
+					case ESTABLISHED:
+						switch(data->type) {
+							case TRANSPORT_DATA:
+								atomic {
+									dbg("genDebug", "receive push return :%d\n", receiverBufferPushBack(&socks[i].in, data));
+									createTransport(&msg, socks[i].localPort, socks[i].destPort, TRANSPORT_ACK, socks[i].in.AdvertisedWindow, socks[i].in.nextByteExpected, 0, 0);
+								}
+								call NetLayer.forward(&msg, socks[i].destAddr);
+								dbg("genDebug", "added pack to inQueue size:%d\n", socks[i].in.lastByteRcvd - socks[i].in.lastByteRead);
+								break;
+								
+							case TRANSPORT_ACK:
+								atomic {
+									if(socks[i].out.lastByteAcked + 1 == data->seq)
+										call NetLayer.forward(&socks[i].out.buffer[0].msg, socks[i].destAddr);
+									senderBufferAckSeq(&socks[i].out, data->seq);
+									socks[i].out.AdvertisedWindow = data->window;
+								}
+								break;
+								
+							case TRANSPORT_FIN:
+								dbg("genDebug", "received a fin pack\n");
+								socks[i].state = CLOSE_WAIT;
+								createTransport(&msg, socks[i].localPort, socks[i].destPort, TRANSPORT_ACK, socks[i].in.AdvertisedWindow, socks[i].in.nextByteExpected, 0, 0);
+								call NetLayer.forward(&msg, socks[i].destAddr);
+								break;
+							
+							case TRANSPORT_SYN:
+								receiverBufferInit(&socks[i].in, data->seq);
+								createTransport(&msg, socks[i].localPort, socks[i].destPort, TRANSPORT_ACK, socks[i].in.AdvertisedWindow, socks[i].in.nextByteExpected, "", 0);
+								call NetLayer.forward(&msg, socks[i].destAddr);
+								break;
+								
+						}
+						break;
+						
+					case LISTEN:
+						dbg("genDebug", "waiting for connect\n");
+						switch(data->type) {
+							case TRANSPORT_SYN: //TODO might need to check if this is a repeat connection attempt
+								if(socks[i].acceptQueue.numValues < socks[i].acceptQueue.backlog) {
+									atomic {
+										((transport*)myMsg->payload)->destPort = portListPopBack(&ports);
+										packListPushBack(&socks[i].acceptQueue, *myMsg);
+									}
+								} else
+									dbg("genDebug", "Too many connects pending\n");
+								break;
+								
+						}
+						break;
+						
+					case SYN_SENT:
+						switch(data->type) {
+							case TRANSPORT_ACK:
+								atomic {
+									socks[i].state = ESTABLISHED;
+									socks[i].destPort = data->srcPort;
+									socks[i].out.AdvertisedWindow = data->window;
+								}
+								break;
+									
+						}
+						break;
+						
+					case SYN_RCVD: //should be able to receive data in this state but not send
+						switch(data->type) {
+							case TRANSPORT_SYN:
+								createTransport(&msg, socks[i].localPort, socks[i].destPort, TRANSPORT_ACK, socks[i].in.AdvertisedWindow, socks[i].in.nextByteExpected, "", 0);
+								call NetLayer.forward(&msg, socks[i].destAddr);
+								break;
+								
+							case TRANSPORT_ACK:
+								atomic {
+									socks[i].out.AdvertisedWindow = data->window;
+									socks[i].state = ESTABLISHED;
+								}
+								break;
+								
+						}
+						break;
+					
+					case FIN_WAIT_1:
+						switch(data->type) {
+							case TRANSPORT_ACK:
+								socks[i].state = FIN_WAIT_2;
+								break;
+							case TRANSPORT_FIN:
+								socks[i].state = CLOSING;
+								//TODO send ACK
+								break;
+							//case TRANSPORT_FIN_ACK:
+								//socks[i].state = TIME_WAIT
+								//start timeout
+								//break
+						}
+						break;
+						
+					case FIN_WAIT_2:
+						switch(data->type) {
+							case TRANSPORT_FIN:
+								//TODO send ack
+								socks[i].state = TIME_WAIT;
+								//TODO start timeout 2MSL
+								break;
+						}
+						break;
+						
+					case CLOSING:
+						switch(data->type) {
+							case TRANSPORT_ACK:
+								socks[i].state = TIME_WAIT;
+								//TODO start timeout
+						}
+						break;
+					
+					case LAST_ACK:
+						switch(data->type) {
+							case TRANSPORT_ACK:
+								socks[i].state = CLOSED;
+								break;
+						}
+						break;
+				}
+			}
+		}
+		
+	}

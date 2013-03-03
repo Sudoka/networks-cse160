@@ -7,7 +7,7 @@ from packet import *
 import sys
 import random
 
-numNodes = 6
+numNodes = 9
 seq = 0
 
 t = Tossim([])
@@ -23,11 +23,22 @@ for line in f:
 
 # Channels used for debuging
 t.addChannel("genDebug", sys.stdout)
+t.addChannel("serverAL", sys.stdout)
+t.addChannel("clientAL", sys.stdout)
+t.addChannel("transport", sys.stdout)
+t.addChannel("error", sys.stdout)
+t.addChannel("TCPState", sys.stdout)
+t.addChannel("TCPError", sys.stdout)
+t.addChannel("TCPHandshake", sys.stdout)
+t.addChannel("TCPTeardown", sys.stdout)
+t.addChannel("P3Socket", sys.stdout)
+t.addChannel("congestionControl", sys.stdout)
 #t.addChannel("cmdDebug", sys.stdout);
 #t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
 #t.addChannel("Project1N", sys.stdout) #Uncomment to enable Neighbor Discovery debug prints
-t.addChannel("Project2", sys.stdout) #uncomment to enable Link State Routing debug prints
-
+#t.addChannel("Project2F", sys.stdout) #uncomment to enable Link State Routing Forwarding debug prints
+#t.addChannel("Project2D", sys.stdout) #uncomment to enable Dijkstra's algorithm debug statements
+#t.addChannel("Project2L", sys.stdout) #uncomment to enable link state packet creation debug statements, beware the SPAM
 
 
 noise = open("no_noise.txt", "r")
@@ -90,33 +101,10 @@ def sendCMD(string, seq):
 	runTime(2);
     
 
+runTime(20)
+sendCMD("0 1 cmd server 1", 4)
+runTime(20)
+sendCMD("0 3 cmd client 8 1 1", 6)
 
-runTime(250)
-#where is this send happening in code, i tried to make a debug print that would say "sending packet %s", msg
-#but i could not find the proper place in the Node.nc file 
-#id like to have 3 print segments per packet sent, a sending, a receiving, and a replying
-#sendCMD("4 1 Hello World!",0)
-#sendCMD("3 5 Hi Im Marbin")
-#sendCMD("1 16 What a world")
-
-#sendCMD("0 2 cmd lsp", 0)
-sendCMD("0 1 cmd ping 5 ping", 1)
-runTime(250)
-sendCMD("0 4 cmd kill", 1)
-#sendCMD("0 3 cmd kill", 2)
-runTime(150) 	#this length of time is important, if i set my timeout to 24 times my discovery period i 
-				#correctly timeout my neighbor, if i set it to 25 i do not! as long as this is more than 
-				#10x as much as the timeout period the network will reorder, the lower i make my timeout 
-				#period the less stable the network though due to the high collision nature of the neighbor 
-				#discovery packets. if i wanted it to be approximately the same as the timeout multiplier i
-				#i would need to change the period from 10003 to 1003 
-				
-				# ^ meta comment on above comment, true but the numbers are outdated, updates even faster now!
-#runTime(1000)
-sendCMD("0 1 cmd ping 5 ping", 3)
-#sendCMD("0 1 cmd print", 1)
-#sendCMD("0 4 cmd print", 2)
-#sendCMD("0 1 cmd ping 4 marbin", 1)
-#sendCMD("0 4 cmd kill", 2)
-#sendCMD("0 1 cmd ping 4 marbout", 3)
 runTime(1000)
+

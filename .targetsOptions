@@ -14,10 +14,31 @@
 <boards/>
 <no-std-incl>false</no-std-incl>
 <component/>
-<component-file>/projNOT/src/Node.nc</component-file>
+<component-file/>
 <include-last-build>true</include-last-build>
 <include-env-default-paths>true</include-env-default-paths>
 <environment_variables/>
 </default>
-<client-data/>
+<custom>
+<target loop="false" name="CFLAGS += -I ./lib -I ./lib/Interfaces -I ./lib/Modules" time="0.0" version="4">
+<default>false</default>
+<project use-custom="true"/>
+<target use-custom="false"/>
+<make-extras use-custom="true" use-default="true"/>
+<includes use-custom="true" use-default="true"/>
+<excludes use-custom="true" use-default="true"/>
+<typedefs use-custom="true" use-default="true"/>
+<macros use-custom="true" use-default="true"/>
+<boards use-custom="true" use-default="true"/>
+<no-std-incl use-custom="true">false</no-std-incl>
+<component use-custom="false"/>
+<component-file use-custom="false"/>
+<include-last-build use-custom="true">false</include-last-build>
+<include-env-default-paths use-custom="true">false</include-env-default-paths>
+<environment_variables use-custom="true" use-default="true"/>
+</target>
+</custom>
+<client-data>
+<data key="MakeOptionsView.expansionState">true</data>
+</client-data>
 </buildTargets>
