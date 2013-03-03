@@ -7,7 +7,7 @@ from packet import *
 import sys
 import random
 
-numNodes = 5
+numNodes = 6
 seq = 0
 
 t = Tossim([])
@@ -102,7 +102,7 @@ runTime(250)
 #sendCMD("0 2 cmd lsp", 0)
 sendCMD("0 1 cmd ping 5 ping", 1)
 runTime(250)
-sendCMD("0 2 cmd kill", 1)
+sendCMD("0 4 cmd kill", 1)
 #sendCMD("0 3 cmd kill", 2)
 runTime(150) 	#this length of time is important, if i set my timeout to 24 times my discovery period i 
 				#correctly timeout my neighbor, if i set it to 25 i do not! as long as this is more than 

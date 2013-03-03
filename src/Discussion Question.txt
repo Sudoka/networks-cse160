@@ -1,0 +1,16 @@
+John Lusby
+CSE 160 Computer Networks
+Project 1
+9-18-2012
+
+Discussion Questions
+
+1. Yes. One advantage is that you eliminate busy waiting and can handle the events as unique and seperate. A disadvantage is that many related events may be asynchronous, biggest example in project 1 was neighbor discovery and how the sends and replys were disjointed so we couldnt just have it update the list once it received back all the ping replys. There was no way to know if it had received back every reply since each reply was represented by a seperate receive event.
+
+2. the flooding packet checks and ttl both protect against unneeded sends but of different types, flooding checks prevent rebroadcasts based on if it has been sent or not, and TTL prevents packets from being rebroadcasted needlessly by nodes that are very far away from the destination, assumably the TTL is greater than the minimum number of hops between the source and destination, the TTL is only really useful when there are other nodes that are more than TTL hops away from source and TTL prevents them from broadcasting the message needlessly down their far away portion of the network. If we only implemented checks packets would not circulate infinitly but they would go to EVERY node in the network, even if those nodes were thousands of hops away. If we only implemented TTL, a cirular network would duplicate the message many many times because each time each node rereceived it it would rebroadcast it, making as many copies as it has neighbors, it would decremint the TTL though so eventually all of these versions of the original packet would be discarded when their TTL is 0 and the nodes try to send them again. TTL does prevent infinite flooding but it doesnt prevent excessive flooding
+
+3. each node will receive as many responses or requests as it has neighbors, when flooding the packet takes any path no more than once, It doesnt necessarily take every path. But because every node rebroadcasts a message it has never received before that is not destined / from it, if the destination has two neighbors the neighbor with the shorted path should send to it first, then the other neighbor will send to it. If the path length is the same then the time they arrive in is more complicated (based on the way the skeleton code works).
+
+4. same as before, each node will receive a copy of each unique message once per neighbor that is connected to it. At most one of these sends is necessary per node and for many nodes it is not necessary that they are part of the forwarding path at all. Using smarter networking protocols the best case number of sends is once per node in the shortest path per message.
+
+5. I seriously wish the skeleton code was implemented to emulate the network in real time. As it is i have to set my timers to loop once every 100 seconds to get it to run at a rate that is more like 50 times a second. Its annoying and results in me having to use timeout values and timer periods that dont really make sense.
