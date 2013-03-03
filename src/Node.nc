@@ -13,20 +13,23 @@
 #include "packBuffer.h"
 #include "dataStructures/hashmap.h"
 #include "dataStructures/hopList.h"
-#include "lib/serverAL.h"
-#include "lib/clientAL.h"
-#include "lib/TCPSocketAL.h"
-#include "lib/serverWorkerList.h"
+
 //Ping Includes
 #include "dataStructures/pingList.h"
 #include "ping.h"
 
+//TCP Includes
+#include "transport.h"
+#include "./lib/TCPSocketAL.h"
+
 #define MAX_NUM_NODES 20
+
 
 module Node{
 	provides{
 		interface NodeI<transport>;
 	}
+	
 	uses interface Boot;
 	uses interface Timer<TMilli> as pingTimeoutTimer;
 	
@@ -37,13 +40,15 @@ module Node{
 	uses interface AMSend;
 	uses interface SplitControl as AMControl;
 	uses interface Receive;
-	uses interface server<TCPSocketAL> as ALServer;
-	uses interface client<TCPSocketAL> as ALClient;
-	uses interface TCPManager<TCPSocketAL,pack> as TCPManager;
-	uses interface TCPSocket<TCPSocketAL> as ALSocket;
 	
 	uses interface Timer<TMilli> as discoveryTimer;
 	uses interface Timer<TMilli> as lspTimer;
+	
+	uses interface TCPManager<TCPSocketAL, pack>;
+	uses interface TCPSocket<TCPSocketAL>;
+	
+	uses interface chatClient<TCPSocketAL> as JLClient;
+	uses interface chatServer<TCPSocketAL> as JLServer;
 	
 }
 
@@ -62,6 +67,8 @@ implementation{
 
 	sendBuffer packBuffer;	
 	arrlist Received;
+	
+	TCPSocketAL * mSocket;
 	
 	bool isActive = TRUE;
 
@@ -90,6 +97,12 @@ implementation{
 			pForward[i] = pBackward[i] = 1.0;
 			lastBeaconSeq[i] = 0;
 		}
+		if(TOS_NODE_ID == 1) {
+			mSocket = call TCPManager.socket();
+			call TCPSocket.bind(mSocket, 41, TOS_NODE_ID);
+			call TCPSocket.listen(mSocket, 5);
+			call JLServer.init(mSocket);
+		}
 	}
 
 	event void AMControl.startDone(error_t err){
@@ -113,7 +126,7 @@ implementation{
 	
 	event void discoveryTimer.fired() {
 		pack discoveryPack;
-		makePack(&discoveryPack, TOS_NODE_ID, DISCOVERY_DEST, 1, PROTOCOL_PING, beaconSeq++, (uint8_t *)"", 0);
+		makePack(&discoveryPack, TOS_NODE_ID, DISCOVERY_DEST, 1, PROTOCOL_PING, beaconSeq++, "", 0);
 		sendBufferPushBack(&packBuffer, discoveryPack, discoveryPack.src, AM_BROADCAST_ADDR);
 		post sendBufferTask();
 	}
@@ -159,8 +172,7 @@ implementation{
 			}
 
 			if(TOS_NODE_ID==myMsg->dest){
-				if(myMsg->protocol != PROTOCOL_TCP)
-					dbg("genDebug", "Packet from %d has arrived! Msg: %s\n\n", myMsg->src, myMsg->payload);
+				//dbg("genDebug", "Packet from %d has arrived! Msg: %s\n\n", myMsg->src, myMsg->payload);
 				switch(myMsg->protocol){
 					uint8_t createMsg[PACKET_MAX_PAYLOAD_SIZE];
 					uint16_t dest;
@@ -170,7 +182,7 @@ implementation{
 					
 					case PROTOCOL_PING:
 						dbg("genDebug", "Sending Ping Reply to %d! \n\n", myMsg->src);
-						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, (uint8_t *) myMsg->payload, sizeof(myMsg->payload));
+						makePack(&sendPackage, TOS_NODE_ID, myMsg->src, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum++, myMsg->payload, sizeof(myMsg->payload));
 						forward(&sendPackage);
 						break;
 
@@ -180,7 +192,9 @@ implementation{
 						
 					case PROTOCOL_CMD:
 							switch(getCMD((uint8_t *) &myMsg->payload, sizeof(myMsg->payload))){
-								TCPSocketAL *mSocket;
+								uint8_t srcPort, destPort;
+								char *username, chatMsg[64];
+								uint16_t destAddr;
 								case CMD_PING:
 									memcpy(&createMsg, (myMsg->payload) + PING_CMD_LENGTH, sizeof(myMsg->payload) - PING_CMD_LENGTH);
 									memcpy(&dest, (myMsg->payload)+ PING_CMD_LENGTH-2, sizeof(uint8_t));
@@ -193,23 +207,36 @@ implementation{
 									isActive = FALSE;
 									break;
 									
-								case CMD_CLIENT:
-									mSocket = call TCPManager.socket();
-									call ALSocket.bind(mSocket, ((myMsg->payload[11])-48)&(0x00FF), TOS_NODE_ID);
-									call ALSocket.connect(mSocket, ((myMsg->payload[15])-48)&(0x00FF), ((myMsg->payload[13])-48)&(0x00FF));
-									call ALClient.init(mSocket);
-									break;
-									
-								case CMD_SERVER:
-									mSocket = call TCPManager.socket();
-									call ALSocket.bind(mSocket, ((myMsg->payload[11])-48)&(0x00FF), TOS_NODE_ID);
-									call ALSocket.listen(mSocket, 5);
-									call ALServer.init(mSocket);
-									break;
-									
 								case CMD_ERROR:
 									break;
 									
+								case CMD_HELLO:
+									strtok(myMsg->payload, " ");
+									username = strtok(NULL, " ");
+									if(strcmp(username, "hello")) {
+										dbg("Project4", "Invalid hello command somehow %s\n", username);
+										break;
+									}
+									username = strtok(NULL, " ");
+									srcPort = atoi(strtok(NULL, " "));
+									dbg("Project4", "Username : %s port %d\n", username, srcPort);
+									mSocket = call TCPManager.socket();
+									call TCPSocket.bind(mSocket, 41, TOS_NODE_ID); //TODO bind to a random port, right now assume 41 is open because im not opening clients on node with a server
+									call TCPSocket.connect(mSocket, 1, 41);
+									call JLClient.init(mSocket, username, srcPort);
+									break;
+
+								case CMD_MSG:
+									strcpy(chatMsg, &myMsg->payload[4]);
+									strcat(chatMsg, "\r\n");
+									dbg("Project4", "sending %s", chatMsg);
+									call JLClient.sendMsg(chatMsg, strlen(chatMsg));
+									break;
+
+								case CMD_LISTUSR:
+									call JLClient.sendMsg("listusr\r\n", strlen("listusr\r\n"));
+									break;
+
 								default:
 									break;
 									
@@ -221,7 +248,7 @@ implementation{
 						
 				}
 			} else if(TOS_NODE_ID == myMsg->src) {
-				dbg("cmdDebug", "Source is this node: %s\n\n", myMsg->payload);
+				//dbg("cmdDebug", "Source is this node: %s\n\n", myMsg->payload);
 				return msg;
 			} else if(myMsg->dest == DISCOVERY_DEST) {
 				switch(myMsg->protocol){
@@ -279,7 +306,7 @@ implementation{
 	
 	async command void NodeI.forward(transport * packet, uint16_t dest) {
 		makePack(&sendPackage, TOS_NODE_ID, dest, MAX_TTL, PROTOCOL_TCP, sequenceNum++, (uint8_t *)packet, sizeof(transport));
-		dbg_clear("genDebug", "\n --- Sending Transport --- \n");
+		dbg_clear("transport", "\n --- Sending Transport --- \n");
 		printTransport(packet);
 		forward(&sendPackage);
 	}

@@ -18,19 +18,20 @@ implementation {
 	components Node;
 	components RandomC as Random;
 	
-	components serverC as ALServer;
-	components clientC as ALClient;
+	components ChatServerC as JLServer;
+	components ChatClientC as JLClient;
 	components TCPManagerC as TCPManager;
 	components TCPSocketC as ALSocket;
 	
-	components new TimerMilliC() as ServerTimer;
-	components new TimerMilliC() as ClientTimer;
-	components new TimerMilliC() as ServerWorkerTimer;
+	components new TimerMilliC() as ChatServerTimer;
+	components new TimerMilliC() as ChatClientTimer;
+	components new TimerMilliC() as ChatServerWorkerTimer;
 	components new TimerMilliC() as pingTimeoutTimer;
 	components new TimerMilliC() as discoveryTimer;
 	components new TimerMilliC() as lspTimer;
 	components new TimerMilliC() as socketTimer;
 	components new TimerMilliC() as shutdownTimer;
+	components new TimerMilliC() as tcpTimer;
 	
 	components ActiveMessageC;
 	components new AMSenderC(6);
@@ -43,15 +44,14 @@ implementation {
 	Node.discoveryTimer->discoveryTimer;
 	Node.lspTimer->lspTimer;
 	
-	TCPManager.socketTimer -> socketTimer;
-	TCPManager.shutdownTimer -> shutdownTimer;
-	
 	Node.Random -> Random;
-	ALSocket.Random -> Random;
 	ALSocket.TCPManager -> TCPManager;
+	ALSocket.tcpTimer -> tcpTimer;
 	
 	ALSocket.NetLayer -> Node;
 	TCPManager.NetLayer -> Node;
+	TCPManager.socketTimer -> socketTimer;
+	TCPManager.shutdownTimer -> shutdownTimer;
 	
 	Node.Packet -> AMSenderC;
 	Node.AMPacket -> AMSenderC;
@@ -59,20 +59,20 @@ implementation {
 	Node.AMControl -> ActiveMessageC;
 	Node.TCPManager -> TCPManager;
 	TCPManager.TCPSocket -> ALSocket;
-	Node.ALSocket -> ALSocket;
+	Node.TCPSocket -> ALSocket;
 
 	Node.Receive -> AMReceiverC;
 	
-	Node.ALServer -> ALServer;
-	ALServer.ServerTimer -> ServerTimer;
-	ALServer.WorkerTimer -> ServerWorkerTimer;
-	ALServer.TCPSocket -> ALSocket;
-	ALServer.Random -> Random;
-	ALServer.TCPManager -> TCPManager;
+	Node.JLServer -> JLServer;
+	JLServer.ChatServerTimer -> ChatServerTimer;
+	JLServer.ChatWorkerTimer -> ChatServerWorkerTimer;
+	JLServer.TCPSocket -> ALSocket;
+	JLServer.Random -> Random;
+	JLServer.TCPManager -> TCPManager;
 	
-	Node.ALClient -> ALClient;
-	ALClient.ClientTimer -> ClientTimer;
-	ALClient.Random -> Random;
-	ALClient.TCPManager -> TCPManager;
-	ALClient.TCPSocket -> ALSocket;
+	Node.JLClient -> JLClient;
+	JLClient.ChatClientTimer -> ChatClientTimer;
+	JLClient.Random -> Random;
+	JLClient.TCPManager -> TCPManager;
+	JLClient.TCPSocket -> ALSocket;
 }

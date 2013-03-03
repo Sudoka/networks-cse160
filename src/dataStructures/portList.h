@@ -23,15 +23,16 @@ bool portListContains(portList * input, uint8_t port) {
 	return FALSE;
 }
 
-bool freePort(portList * input, uint8_t port) {
-	if(portListContains(input, port) || input->numValues > TOTALPORTS || port < 0 || port > TOTALPORTS)
+bool portListFreePort(portList * input, uint8_t port) {
+	if(portListContains(input, port) || input->numValues > TOTALPORTS || port <= 0 || port > TOTALPORTS)
 		return FALSE; //invalid port
 	input->portID[input->numValues] = port;
+	//dbg("genDebug", "freed port %d %d\n",input->portID[input->numValues], port);
 	input->numValues++;
 	return TRUE;
 }
 
-bool requestPort(portList * input, uint8_t port) {
+bool portListRequestPort(portList * input, uint8_t port) {
 	uint8_t i;
 	for(i = 0; i < input->numValues; i++)
 		if(input->portID[i] == port) {
@@ -44,7 +45,7 @@ bool requestPort(portList * input, uint8_t port) {
 
 uint8_t portListPopBack(portList * input) {
 	uint8_t port = input->portID[input->numValues-1];
-	dbg("genDebug", "giving port:%d\n", port);
+	//dbg("genDebug", "giving port:%d\n", port);
 	input->numValues--;
 	return port;
 }
