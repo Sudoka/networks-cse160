@@ -17,6 +17,7 @@ enum{
 };
 
 
+
 typedef nx_struct pack{
 	nx_uint16_t dest;
 	nx_uint16_t src;

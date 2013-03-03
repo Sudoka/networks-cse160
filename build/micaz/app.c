@@ -210,7 +210,7 @@ typedef struct __nesc_unnamed4243 {
 } ldiv_t;
 
 
-typedef int (*__compar_fn_t)(const void *arg_0x2b8df69c9838, const void *arg_0x2b8df69c9b10);
+typedef int (*__compar_fn_t)(const void *arg_0x2b5d64ae7838, const void *arg_0x2b5d64ae7b10);
 # 25 "/home/john/local/tinyos-2.1.1/tos/system/tos.h"
 typedef uint8_t bool;
 enum __nesc_unnamed4244 {
@@ -820,60 +820,8 @@ enum __nesc_unnamed4297 {
 enum __nesc_unnamed4298 {
   PLATFORM_BAUDRATE = 57600L
 };
-# 7 "/home/john/workspace/projNOT/src/dataStructures/hashmap.h"
-typedef uint32_t hashType;
-
+# 8 "/home/john/workspace/Project3/src/lib/../protocol.h"
 enum __nesc_unnamed4299 {
-  HASH_MAX_SIZE = 20
-};
-
-
-
-
-#line 13
-typedef struct hashmapEntry {
-  uint16_t key;
-  hashType value;
-} hashmapEntry;
-
-
-
-
-
-#line 18
-typedef struct hashmap {
-  hashmapEntry map[HASH_MAX_SIZE];
-  uint8_t keys[HASH_MAX_SIZE];
-  uint8_t numofVals;
-} hashmap;
-# 14 "/home/john/workspace/projNOT/src/dataStructures/iterator.h"
-#line 10
-typedef struct iterator {
-  hashType values[HASH_MAX_SIZE];
-  uint16_t size;
-  uint16_t position;
-} iterator;
-# 12 "/home/john/workspace/projNOT/src/command.h"
-enum __nesc_unnamed4300 {
-  CMD_PING = 0, 
-  CMD_NEIGHBOR_DUMP = 1, 
-  CMD_LINKLIST_DUMP = 2, 
-  CMD_ROUTETABLE_DUMP = 3, 
-  CMD_TEST_CLIENT = 4, 
-  CMD_TEST_SERVER = 5, 
-  CMD_KILL = 6, 
-  CMD_PRINT = 7, 
-  CMD_LSP = 8, 
-  CMD_ERROR = 66
-};
-
-
-enum __nesc_unnamed4301 {
-  PING_CMD_LENGTH = 11, 
-  DUMP_NEIGHBOR_LENGTH = 7
-};
-# 8 "/home/john/workspace/projNOT/src/protocol.h"
-enum __nesc_unnamed4302 {
   PROTOCOL_PING = 0, 
   PROTOCOL_PINGREPLY = 1, 
   PROTOCOL_LINKSTATE = 2, 
@@ -881,8 +829,8 @@ enum __nesc_unnamed4302 {
   PROTOCOL_TCP = 4, 
   PROTOCOL_CMD = 99
 };
-# 13 "/home/john/workspace/projNOT/src/packet.h"
-enum __nesc_unnamed4303 {
+# 13 "/home/john/workspace/Project3/src/lib/../packet.h"
+enum __nesc_unnamed4300 {
   PACKET_HEADER_LENGTH = 8, 
   PACKET_MAX_PAYLOAD_SIZE = 28 - PACKET_HEADER_LENGTH, 
   MAX_TTL = 15
@@ -906,445 +854,30 @@ typedef nx_struct pack {
   nx_uint8_t payload[PACKET_MAX_PAYLOAD_SIZE];
 } __attribute__((packed)) pack;
 #line 40
-enum __nesc_unnamed4304 {
+enum __nesc_unnamed4301 {
   AM_PACK = 6
 };
-# 9 "/home/john/workspace/projNOT/src/dataStructures/pair.h"
-#line 6
-typedef struct pair {
-  uint16_t src;
-  uint16_t seq;
-} pair;
-# 6 "/home/john/workspace/projNOT/src/dataStructures/list.h"
-typedef pair dataType;
-
-
-
-
-
-
-
-#line 10
-typedef struct arrlist {
-
-  dataType values[30];
-  uint8_t numValues;
-} arrlist;
-# 8 "/home/john/workspace/projNOT/src/packBuffer.h"
-enum __nesc_unnamed4305 {
-  SEND_BUFFER_SIZE = 128
+# 14 "/home/john/workspace/Project3/src/lib/../transport.h"
+enum __nesc_unnamed4302 {
+  TRANSPORT_MAX_SIZE = PACKET_MAX_PAYLOAD_SIZE, 
+  TRANSPORT_HEADER_SIZE = 8, 
+  TRANSPORT_MAX_PAYLOAD_SIZE = TRANSPORT_MAX_SIZE - TRANSPORT_HEADER_SIZE, 
+  TRANSPORT_MAX_PORT = 255
 };
 
 
-
-
-
-#line 12
-typedef struct sendInfo {
-  pack packet;
-  uint16_t src;
-  uint16_t dest;
-} sendInfo;
-
-
-
-
-#line 18
-typedef struct sendBuffer {
-  sendInfo buffer[SEND_BUFFER_SIZE];
-  uint8_t size;
-} sendBuffer;
-# 10 "/home/john/workspace/projNOT/src/dataStructures/hopList.h"
-#line 6
-typedef struct hopEntry {
-  uint8_t nodeID;
-  uint8_t cost;
-  uint8_t nextHop;
-} hopEntry;
-
-
-
-
-
-#line 12
-typedef struct hopList {
-
-  hopEntry values[20];
-  uint8_t numValues;
-} hopList;
-# 9 "/home/john/workspace/projNOT/src/dataStructures/pingInfo.h"
-#line 5
-typedef struct pingInfo {
-  uint16_t dest;
-  uint32_t timeSent;
-  uint8_t msg[PACKET_MAX_PAYLOAD_SIZE];
-} pingInfo;
-# 5 "/home/john/workspace/projNOT/src/dataStructures/pingList.h"
-typedef pingInfo pingType;
-
-
-
-
-
-
-
-#line 10
-typedef struct pingList {
-  pingType values[30];
-  uint8_t numValues;
-} pingList;
-# 7 "/home/john/workspace/projNOT/src/ping.h"
-enum __nesc_unnamed4306 {
-  PING_TIMER_PERIOD = 5333, 
-  PING_TIMEOUT = 5000
-};
-# 26 "/home/john/workspace/projNOT/src/Node.nc"
-#line 23
-typedef struct linkReliability {
-  uint32_t rollingList;
-  uint16_t lastSeq;
-} linkReliability;
-# 39 "/home/john/local/tinyos-2.1.1/tos/chips/cc2420/CC2420.h"
-typedef uint8_t cc2420_status_t;
-#line 93
-#line 87
-typedef nx_struct security_header_t {
-  unsigned char __nesc_filler0[1];
-
-
-  nx_uint32_t frameCounter;
-  nx_uint8_t keyID[1];
-} __attribute__((packed)) security_header_t;
-#line 113
-#line 95
-typedef nx_struct cc2420_header_t {
-  nxle_uint8_t length;
-  nxle_uint16_t fcf;
-  nxle_uint8_t dsn;
-  nxle_uint16_t destpan;
-  nxle_uint16_t dest;
-  nxle_uint16_t src;
-
-
-
-
-
-
-
-  nxle_uint8_t network;
-
-
-  nxle_uint8_t type;
-} __attribute__((packed)) cc2420_header_t;
-
-
-
-
-
-#line 118
-typedef nx_struct cc2420_footer_t {
-} __attribute__((packed)) cc2420_footer_t;
-#line 143
-#line 128
-typedef nx_struct cc2420_metadata_t {
-  nx_uint8_t rssi;
-  nx_uint8_t lqi;
-  nx_uint8_t tx_power;
-  nx_bool crc;
-  nx_bool ack;
-  nx_bool timesync;
-  nx_uint32_t timestamp;
-  nx_uint16_t rxInterval;
-} __attribute__((packed)) 
-
-
-
-
-
-cc2420_metadata_t;
-
-
-
-
-
-#line 146
-typedef nx_struct cc2420_packet_t {
-  cc2420_header_t packet;
-  nx_uint8_t data[];
-} __attribute__((packed)) cc2420_packet_t;
-#line 179
-enum __nesc_unnamed4307 {
-
-  MAC_HEADER_SIZE = sizeof(cc2420_header_t ) - 1, 
-
-  MAC_FOOTER_SIZE = sizeof(uint16_t ), 
-
-  MAC_PACKET_SIZE = MAC_HEADER_SIZE + 28 + MAC_FOOTER_SIZE, 
-
-  CC2420_SIZE = MAC_HEADER_SIZE + MAC_FOOTER_SIZE
+enum __nesc_unnamed4303 {
+  TRANSPORT_SYN = 0, 
+  TRANSPORT_ACK = 1, 
+  TRANSPORT_FIN = 2, 
+  TRANSPORT_DATA = 3, 
+  TRANSPORT_TYPE_SIZE = 4
 };
 
-enum cc2420_enums {
-  CC2420_TIME_ACK_TURNAROUND = 7, 
-  CC2420_TIME_VREN = 20, 
-  CC2420_TIME_SYMBOL = 2, 
-  CC2420_BACKOFF_PERIOD = 20 / CC2420_TIME_SYMBOL, 
-  CC2420_MIN_BACKOFF = 20 / CC2420_TIME_SYMBOL, 
-  CC2420_ACK_WAIT_DELAY = 256
-};
-
-enum cc2420_status_enums {
-  CC2420_STATUS_RSSI_VALID = 1 << 1, 
-  CC2420_STATUS_LOCK = 1 << 2, 
-  CC2420_STATUS_TX_ACTIVE = 1 << 3, 
-  CC2420_STATUS_ENC_BUSY = 1 << 4, 
-  CC2420_STATUS_TX_UNDERFLOW = 1 << 5, 
-  CC2420_STATUS_XOSC16M_STABLE = 1 << 6
-};
-
-enum cc2420_config_reg_enums {
-  CC2420_SNOP = 0x00, 
-  CC2420_SXOSCON = 0x01, 
-  CC2420_STXCAL = 0x02, 
-  CC2420_SRXON = 0x03, 
-  CC2420_STXON = 0x04, 
-  CC2420_STXONCCA = 0x05, 
-  CC2420_SRFOFF = 0x06, 
-  CC2420_SXOSCOFF = 0x07, 
-  CC2420_SFLUSHRX = 0x08, 
-  CC2420_SFLUSHTX = 0x09, 
-  CC2420_SACK = 0x0a, 
-  CC2420_SACKPEND = 0x0b, 
-  CC2420_SRXDEC = 0x0c, 
-  CC2420_STXENC = 0x0d, 
-  CC2420_SAES = 0x0e, 
-  CC2420_MAIN = 0x10, 
-  CC2420_MDMCTRL0 = 0x11, 
-  CC2420_MDMCTRL1 = 0x12, 
-  CC2420_RSSI = 0x13, 
-  CC2420_SYNCWORD = 0x14, 
-  CC2420_TXCTRL = 0x15, 
-  CC2420_RXCTRL0 = 0x16, 
-  CC2420_RXCTRL1 = 0x17, 
-  CC2420_FSCTRL = 0x18, 
-  CC2420_SECCTRL0 = 0x19, 
-  CC2420_SECCTRL1 = 0x1a, 
-  CC2420_BATTMON = 0x1b, 
-  CC2420_IOCFG0 = 0x1c, 
-  CC2420_IOCFG1 = 0x1d, 
-  CC2420_MANFIDL = 0x1e, 
-  CC2420_MANFIDH = 0x1f, 
-  CC2420_FSMTC = 0x20, 
-  CC2420_MANAND = 0x21, 
-  CC2420_MANOR = 0x22, 
-  CC2420_AGCCTRL = 0x23, 
-  CC2420_AGCTST0 = 0x24, 
-  CC2420_AGCTST1 = 0x25, 
-  CC2420_AGCTST2 = 0x26, 
-  CC2420_FSTST0 = 0x27, 
-  CC2420_FSTST1 = 0x28, 
-  CC2420_FSTST2 = 0x29, 
-  CC2420_FSTST3 = 0x2a, 
-  CC2420_RXBPFTST = 0x2b, 
-  CC2420_FMSTATE = 0x2c, 
-  CC2420_ADCTST = 0x2d, 
-  CC2420_DACTST = 0x2e, 
-  CC2420_TOPTST = 0x2f, 
-  CC2420_TXFIFO = 0x3e, 
-  CC2420_RXFIFO = 0x3f
-};
-
-enum cc2420_ram_addr_enums {
-  CC2420_RAM_TXFIFO = 0x000, 
-  CC2420_RAM_RXFIFO = 0x080, 
-  CC2420_RAM_KEY0 = 0x100, 
-  CC2420_RAM_RXNONCE = 0x110, 
-  CC2420_RAM_SABUF = 0x120, 
-  CC2420_RAM_KEY1 = 0x130, 
-  CC2420_RAM_TXNONCE = 0x140, 
-  CC2420_RAM_CBCSTATE = 0x150, 
-  CC2420_RAM_IEEEADR = 0x160, 
-  CC2420_RAM_PANID = 0x168, 
-  CC2420_RAM_SHORTADR = 0x16a
-};
-
-enum cc2420_nonce_enums {
-  CC2420_NONCE_BLOCK_COUNTER = 0, 
-  CC2420_NONCE_KEY_SEQ_COUNTER = 2, 
-  CC2420_NONCE_FRAME_COUNTER = 3, 
-  CC2420_NONCE_SOURCE_ADDRESS = 7, 
-  CC2420_NONCE_FLAGS = 15
-};
-
-enum cc2420_main_enums {
-  CC2420_MAIN_RESETn = 15, 
-  CC2420_MAIN_ENC_RESETn = 14, 
-  CC2420_MAIN_DEMOD_RESETn = 13, 
-  CC2420_MAIN_MOD_RESETn = 12, 
-  CC2420_MAIN_FS_RESETn = 11, 
-  CC2420_MAIN_XOSC16M_BYPASS = 0
-};
-
-enum cc2420_mdmctrl0_enums {
-  CC2420_MDMCTRL0_RESERVED_FRAME_MODE = 13, 
-  CC2420_MDMCTRL0_PAN_COORDINATOR = 12, 
-  CC2420_MDMCTRL0_ADR_DECODE = 11, 
-  CC2420_MDMCTRL0_CCA_HYST = 8, 
-  CC2420_MDMCTRL0_CCA_MOD = 6, 
-  CC2420_MDMCTRL0_AUTOCRC = 5, 
-  CC2420_MDMCTRL0_AUTOACK = 4, 
-  CC2420_MDMCTRL0_PREAMBLE_LENGTH = 0
-};
-
-enum cc2420_mdmctrl1_enums {
-  CC2420_MDMCTRL1_CORR_THR = 6, 
-  CC2420_MDMCTRL1_DEMOD_AVG_MODE = 5, 
-  CC2420_MDMCTRL1_MODULATION_MODE = 4, 
-  CC2420_MDMCTRL1_TX_MODE = 2, 
-  CC2420_MDMCTRL1_RX_MODE = 0
-};
-
-enum cc2420_rssi_enums {
-  CC2420_RSSI_CCA_THR = 8, 
-  CC2420_RSSI_RSSI_VAL = 0
-};
-
-enum cc2420_syncword_enums {
-  CC2420_SYNCWORD_SYNCWORD = 0
-};
-
-enum cc2420_txctrl_enums {
-  CC2420_TXCTRL_TXMIXBUF_CUR = 14, 
-  CC2420_TXCTRL_TX_TURNAROUND = 13, 
-  CC2420_TXCTRL_TXMIX_CAP_ARRAY = 11, 
-  CC2420_TXCTRL_TXMIX_CURRENT = 9, 
-  CC2420_TXCTRL_PA_CURRENT = 6, 
-  CC2420_TXCTRL_RESERVED = 5, 
-  CC2420_TXCTRL_PA_LEVEL = 0
-};
-
-enum cc2420_rxctrl0_enums {
-  CC2420_RXCTRL0_RXMIXBUF_CUR = 12, 
-  CC2420_RXCTRL0_HIGH_LNA_GAIN = 10, 
-  CC2420_RXCTRL0_MED_LNA_GAIN = 8, 
-  CC2420_RXCTRL0_LOW_LNA_GAIN = 6, 
-  CC2420_RXCTRL0_HIGH_LNA_CURRENT = 4, 
-  CC2420_RXCTRL0_MED_LNA_CURRENT = 2, 
-  CC2420_RXCTRL0_LOW_LNA_CURRENT = 0
-};
-
-enum cc2420_rxctrl1_enums {
-  CC2420_RXCTRL1_RXBPF_LOCUR = 13, 
-  CC2420_RXCTRL1_RXBPF_MIDCUR = 12, 
-  CC2420_RXCTRL1_LOW_LOWGAIN = 11, 
-  CC2420_RXCTRL1_MED_LOWGAIN = 10, 
-  CC2420_RXCTRL1_HIGH_HGM = 9, 
-  CC2420_RXCTRL1_MED_HGM = 8, 
-  CC2420_RXCTRL1_LNA_CAP_ARRAY = 6, 
-  CC2420_RXCTRL1_RXMIX_TAIL = 4, 
-  CC2420_RXCTRL1_RXMIX_VCM = 2, 
-  CC2420_RXCTRL1_RXMIX_CURRENT = 0
-};
-
-enum cc2420_rsctrl_enums {
-  CC2420_FSCTRL_LOCK_THR = 14, 
-  CC2420_FSCTRL_CAL_DONE = 13, 
-  CC2420_FSCTRL_CAL_RUNNING = 12, 
-  CC2420_FSCTRL_LOCK_LENGTH = 11, 
-  CC2420_FSCTRL_LOCK_STATUS = 10, 
-  CC2420_FSCTRL_FREQ = 0
-};
-
-enum cc2420_secctrl0_enums {
-  CC2420_SECCTRL0_RXFIFO_PROTECTION = 9, 
-  CC2420_SECCTRL0_SEC_CBC_HEAD = 8, 
-  CC2420_SECCTRL0_SEC_SAKEYSEL = 7, 
-  CC2420_SECCTRL0_SEC_TXKEYSEL = 6, 
-  CC2420_SECCTRL0_SEC_RXKEYSEL = 5, 
-  CC2420_SECCTRL0_SEC_M = 2, 
-  CC2420_SECCTRL0_SEC_MODE = 0
-};
-
-enum cc2420_secctrl1_enums {
-  CC2420_SECCTRL1_SEC_TXL = 8, 
-  CC2420_SECCTRL1_SEC_RXL = 0
-};
-
-enum cc2420_battmon_enums {
-  CC2420_BATTMON_BATT_OK = 6, 
-  CC2420_BATTMON_BATTMON_EN = 5, 
-  CC2420_BATTMON_BATTMON_VOLTAGE = 0
-};
-
-enum cc2420_iocfg0_enums {
-  CC2420_IOCFG0_BCN_ACCEPT = 11, 
-  CC2420_IOCFG0_FIFO_POLARITY = 10, 
-  CC2420_IOCFG0_FIFOP_POLARITY = 9, 
-  CC2420_IOCFG0_SFD_POLARITY = 8, 
-  CC2420_IOCFG0_CCA_POLARITY = 7, 
-  CC2420_IOCFG0_FIFOP_THR = 0
-};
-
-enum cc2420_iocfg1_enums {
-  CC2420_IOCFG1_HSSD_SRC = 10, 
-  CC2420_IOCFG1_SFDMUX = 5, 
-  CC2420_IOCFG1_CCAMUX = 0
-};
-
-enum cc2420_manfidl_enums {
-  CC2420_MANFIDL_PARTNUM = 12, 
-  CC2420_MANFIDL_MANFID = 0
-};
-
-enum cc2420_manfidh_enums {
-  CC2420_MANFIDH_VERSION = 12, 
-  CC2420_MANFIDH_PARTNUM = 0
-};
-
-enum cc2420_fsmtc_enums {
-  CC2420_FSMTC_TC_RXCHAIN2RX = 13, 
-  CC2420_FSMTC_TC_SWITCH2TX = 10, 
-  CC2420_FSMTC_TC_PAON2TX = 6, 
-  CC2420_FSMTC_TC_TXEND2SWITCH = 3, 
-  CC2420_FSMTC_TC_TXEND2PAOFF = 0
-};
-
-enum cc2420_sfdmux_enums {
-  CC2420_SFDMUX_SFD = 0, 
-  CC2420_SFDMUX_XOSC16M_STABLE = 24
-};
-
-enum cc2420_security_enums {
-  CC2420_NO_SEC = 0, 
-  CC2420_CBC_MAC = 1, 
-  CC2420_CTR = 2, 
-  CC2420_CCM = 3, 
-  NO_SEC = 0, 
-  CBC_MAC_4 = 1, 
-  CBC_MAC_8 = 2, 
-  CBC_MAC_16 = 3, 
-  CTR = 4, 
-  CCM_4 = 5, 
-  CCM_8 = 6, 
-  CCM_16 = 7
-};
-
-
-enum __nesc_unnamed4308 {
-
-  CC2420_INVALID_TIMESTAMP = 0x80000000L
-};
-# 6 "/home/john/local/tinyos-2.1.1/tos/types/AM.h"
-typedef nx_uint8_t nx_am_id_t;
-typedef nx_uint8_t nx_am_group_t;
-typedef nx_uint16_t nx_am_addr_t;
-
-typedef uint8_t am_id_t;
-typedef uint8_t am_group_t;
-typedef uint16_t am_addr_t;
-
-enum __nesc_unnamed4309 {
-  AM_BROADCAST_ADDR = 0xffff
+enum __nesc_unnamed4304 {
+  NULL_TRANSPORT_PAYLOAD = 0, 
+  NULL_TRANSPORT_VALUE = 0, 
+  NULL_TRANSPORT_HEX_VALUE = 0x0000
 };
 
 
@@ -1355,126 +888,64 @@ enum __nesc_unnamed4309 {
 
 
 
-enum __nesc_unnamed4310 {
-  TOS_AM_GROUP = 0x22, 
-  TOS_AM_ADDRESS = 1
-};
-# 83 "/home/john/local/tinyos-2.1.1/tos/lib/serial/Serial.h"
-typedef uint8_t uart_id_t;
-
-
-
-enum __nesc_unnamed4311 {
-  HDLC_FLAG_BYTE = 0x7e, 
-  HDLC_CTLESC_BYTE = 0x7d
-};
-
-
-
-enum __nesc_unnamed4312 {
-  TOS_SERIAL_ACTIVE_MESSAGE_ID = 0, 
-  TOS_SERIAL_CC1000_ID = 1, 
-  TOS_SERIAL_802_15_4_ID = 2, 
-  TOS_SERIAL_UNKNOWN_ID = 255
-};
-
-
-enum __nesc_unnamed4313 {
-  SERIAL_PROTO_ACK = 67, 
-  SERIAL_PROTO_PACKET_ACK = 68, 
-  SERIAL_PROTO_PACKET_NOACK = 69, 
-  SERIAL_PROTO_PACKET_UNKNOWN = 255
-};
-#line 121
-#line 109
-typedef struct radio_stats {
-  uint8_t version;
-  uint8_t flags;
-  uint8_t reserved;
-  uint8_t platform;
-  uint16_t MTU;
-  uint16_t radio_crc_fail;
-  uint16_t radio_queue_drops;
-  uint16_t serial_crc_fail;
-  uint16_t serial_tx_fail;
-  uint16_t serial_short_packets;
-  uint16_t serial_proto_drops;
-} radio_stats_t;
-
-
-
-
-
-
-
-#line 123
-typedef nx_struct serial_header {
-  nx_am_addr_t dest;
-  nx_am_addr_t src;
+#line 36
+typedef nx_struct transport {
+  nx_uint8_t srcPort;
+  nx_uint8_t destPort;
+  nx_uint8_t type;
+  nx_uint16_t window;
+  nx_uint16_t seq;
   nx_uint8_t length;
-  nx_am_group_t group;
-  nx_am_id_t type;
-} __attribute__((packed)) serial_header_t;
-
-
-
-
-#line 131
-typedef nx_struct serial_packet {
-  serial_header_t header;
-  nx_uint8_t data[];
-} __attribute__((packed)) serial_packet_t;
-
-
-
-#line 136
-typedef nx_struct serial_metadata {
-  nx_uint8_t ack;
-} __attribute__((packed)) serial_metadata_t;
-# 60 "/home/john/local/tinyos-2.1.1/tos/platforms/micaz/platform_message.h"
-#line 57
-typedef union message_header {
-  cc2420_header_t cc2420;
-  serial_header_t serial;
-} message_header_t;
-
-
-
-#line 62
-typedef union message_footer {
-  cc2420_footer_t cc2420;
-} message_footer_t;
-
-
-
-
-#line 66
-typedef union message_metadata {
-  cc2420_metadata_t cc2420;
-  serial_metadata_t serial;
-} message_metadata_t;
-# 19 "/home/john/local/tinyos-2.1.1/tos/types/message.h"
-#line 14
-typedef nx_struct message_t {
-  nx_uint8_t header[sizeof(message_header_t )];
-  nx_uint8_t data[28];
-  nx_uint8_t footer[sizeof(message_footer_t )];
-  nx_uint8_t metadata[sizeof(message_metadata_t )];
-} __attribute__((packed)) message_t;
-typedef TMilli Node__discoveryTimer__precision_tag;
-typedef TMilli Node__lspTimer__precision_tag;
-typedef TMilli Node__pingTimeoutTimer__precision_tag;
-# 78 "/home/john/workspace/projNOT/src/Node.nc"
-enum Node____nesc_unnamed4314 {
-#line 78
-  Node__sendBufferTask = 0U
+  nx_uint8_t payload[TRANSPORT_MAX_PAYLOAD_SIZE];
+} __attribute__((packed)) transport;
+# 10 "/home/john/workspace/Project3/src/lib/../dataStructures/packList.h"
+#line 6
+typedef struct packList {
+  pack values[10];
+  uint8_t numValues;
+  uint8_t backlog;
+} packList;
+# 15 "/home/john/workspace/Project3/src/lib/TCPSocketAL.h"
+enum TCPSOCKET_STATE {
+  CLOSED = 0, 
+  LISTEN = 1, 
+  SYN_SENT = 2, 
+  ESTABLISHED = 3, 
+  SHUTDOWN = 4, 
+  CLOSING = 5, 
+  SYN_RCVD = 6
 };
-#line 78
-typedef int Node____nesc_sillytask_sendBufferTask[Node__sendBufferTask];
-# 61 "/home/john/local/tinyos-2.1.1/tos/system/SchedulerBasicP.nc"
-enum SchedulerBasicP____nesc_unnamed4315 {
+#line 39
+#line 25
+typedef struct TCPSocketAL {
 
-  SchedulerBasicP__NUM_TASKS = 1U, 
+  uint8_t state;
+  uint8_t localPort;
+  uint8_t destPort;
+  uint16_t destAddr;
+  uint16_t localAddr;
+  uint16_t sequenceNum;
+  uint16_t receiverAdvertisedWindow;
+  uint16_t myAdvertisedWindow;
+  uint8_t SYN_ACKD;
+  packList inQueue;
+  packList outQueue;
+  packList acceptQueue;
+} TCPSocketAL;
+# 8 "/home/john/workspace/Project3/src/lib/../dataStructures/portList.h"
+#line 5
+typedef struct portList {
+  uint8_t portID[256];
+  uint16_t numValues;
+} portList;
+typedef transport TCPManagerC__NetLayer__val_t;
+typedef TCPSocketAL TCPManagerC__TCPManager__val_t;
+typedef pack TCPManagerC__TCPManager__val2_t;
+typedef TCPSocketAL TCPManagerC__TCPSocket__val_t;
+# 61 "/home/john/local/tinyos-2.1.1/tos/system/SchedulerBasicP.nc"
+enum SchedulerBasicP____nesc_unnamed4305 {
+
+  SchedulerBasicP__NUM_TASKS = 0U, 
   SchedulerBasicP__NO_TASK = 255
 };
 # 92 "/home/john/local/tinyos-2.1.1/tos/chips/atm128/atm128hardware.h"

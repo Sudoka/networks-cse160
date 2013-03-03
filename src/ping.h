@@ -10,9 +10,9 @@ enum{
 };
 
 void checkTimes(pingList *pings, uint32_t currentTime){
-	uint8_t i=0;
+	uint8_t i;
 	pingInfo temp;
-	for(i; i<pingListSize(pings); i++){
+	for(i=0; i<pingListSize(pings); i++){
 		temp=pingListGet(pings,i);
 		if(temp.timeSent+PING_TIMEOUT< currentTime){
 			dbg("genDebug", "Ping Lost!\n Msg: %s", temp.msg);

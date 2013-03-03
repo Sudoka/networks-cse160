@@ -19,6 +19,8 @@ enum{
 	CMD_KILL=6,
 	CMD_PRINT=7,
 	CMD_LSP=8,
+	CMD_CLIENT=9,
+	CMD_SERVER=10,
 	CMD_ERROR=66
 };
 
@@ -59,6 +61,18 @@ bool isLSP(uint8_t *array, uint8_t size) {
 	return FALSE;
 }
 
+bool isCLIENT(uint8_t *array, uint8_t size) {
+	if(array[4]=='c' && array[5]=='l' &&  array[6]=='i' && array[7]=='e' 
+	&& array[8]=='n' && array[9]=='t') return TRUE;
+	return FALSE;
+}
+
+bool isSERVER(uint8_t *array, uint8_t size) {
+	if(array[4]=='s' && array[5]=='e' &&  array[6]=='r' && array[7]=='v' 
+	&& array[8]=='e' && array[9]=='r') return TRUE;
+	return FALSE;
+}
+
 /*
  * getCmd - processes a string to find out which command is being issued. A Command ID is returned based on the
  * enum declared. Also debugging information is sent to the cmdDebug channel.
@@ -95,6 +109,16 @@ int getCMD(uint8_t *array, uint8_t size){
 	if(isLSP(array,size)) {
 		dbg("cmdDebug", "Command Type: LSP\n");
 		return CMD_LSP;
+	}
+	
+	if(isCLIENT(array,size)) {
+		dbg("cmdDebug", "Command Type: CLIENT\n");
+		return CMD_CLIENT;
+	}
+	
+	if(isSERVER(array,size)) {
+		dbg("cmdDebug", "Command Type: SERVER\n");
+		return CMD_SERVER;
 	}
 	
 	dbg("cmdDebug", "CMD_ERROR: \"%s\" does not match any known commands.\n", array);
