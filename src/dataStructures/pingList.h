@@ -54,7 +54,7 @@ bool pingListContains(pingList* list, uint16_t dest, uint8_t *payload){
 }
 
 void pingListDelete(pingList* list, uint8_t i){
-	for(; i<list->numValues-1; i++){
+	for(i; i<list->numValues-1; i++){
 		list->values[i]=list->values[i+1];
 	}
 	list->numValues--;

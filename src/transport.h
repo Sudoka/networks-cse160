@@ -24,8 +24,7 @@ enum{
 	TRANSPORT_ACK = 1,
 	TRANSPORT_FIN = 2,
 	TRANSPORT_DATA = 3,
-	TRANSPORT_RST = 4,
-	TRANSPORT_TYPE_SIZE = 5
+	TRANSPORT_TYPE_SIZE=4
 };
 
 enum{
@@ -39,7 +38,7 @@ typedef nx_struct transport{
 	nx_uint8_t destPort;
 	nx_uint8_t type;
 	nx_uint16_t window;
-	nx_uint16_t seq; //this cant be allowed to go above 2^15
+	nx_uint16_t seq;
 	nx_uint8_t length;
 	nx_uint8_t payload[TRANSPORT_MAX_PAYLOAD_SIZE];
 }transport;

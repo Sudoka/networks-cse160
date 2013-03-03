@@ -38,7 +38,5 @@
 <environment_variables use-custom="true" use-default="true"/>
 </target>
 </custom>
-<client-data>
-<data key="MakeOptionsView.expansionState">true</data>
-</client-data>
+<client-data/>
 </buildTargets>

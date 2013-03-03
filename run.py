@@ -23,17 +23,20 @@ for line in f:
 
 # Channels used for debuging
 t.addChannel("genDebug", sys.stdout)
-t.addChannel("serverAL", sys.stdout)
-t.addChannel("clientAL", sys.stdout)
-t.addChannel("transport", sys.stdout)
+#t.addChannel("serverAL", sys.stdout)
+#t.addChannel("clientAL", sys.stdout)
+#t.addChannel("transport", sys.stdout)
 t.addChannel("error", sys.stdout)
-t.addChannel("TCPState", sys.stdout)
+#t.addChannel("TCPState", sys.stdout)
 t.addChannel("TCPError", sys.stdout)
-t.addChannel("TCPHandshake", sys.stdout)
-t.addChannel("TCPTeardown", sys.stdout)
-t.addChannel("P3Socket", sys.stdout)
-t.addChannel("congestionControl", sys.stdout)
-#t.addChannel("cmdDebug", sys.stdout);
+#t.addChannel("TCPHandshake", sys.stdout)
+#t.addChannel("TCPTeardown", sys.stdout)
+#t.addChannel("P3Socket", sys.stdout)
+#t.addChannel("congestionControl", sys.stdout)
+#t.addChannel("ReliableTransport", sys.stdout)
+t.addChannel("cmdDebug", sys.stdout)
+t.addChannel("Project4", sys.stdout)
+#t.addChannel("Project3", sys.stdout)
 #t.addChannel("Project1F", sys.stdout) #Uncomment to enable Flooding debug prints
 #t.addChannel("Project1N", sys.stdout) #Uncomment to enable Neighbor Discovery debug prints
 #t.addChannel("Project2F", sys.stdout) #uncomment to enable Link State Routing Forwarding debug prints
@@ -41,7 +44,9 @@ t.addChannel("congestionControl", sys.stdout)
 #t.addChannel("Project2L", sys.stdout) #uncomment to enable link state packet creation debug statements, beware the SPAM
 
 
-noise = open("no_noise.txt", "r")
+#noise = open("no_noise.txt", "r")
+noise = open("heavy_noise_30.txt", "r")
+
 for line in noise:
   str1 = line.strip()
   if str1:
@@ -58,19 +63,19 @@ for i in range(1, numNodes+1):
 
 
 def package(string):
- 	ints = []
-	for c in string:
-		ints.append(ord(c))
-	return ints
+    ints = []
+    for c in string:
+        ints.append(ord(c))
+    return ints
 
 def run(ticks):
-	for i in range(ticks):
-		t.runNextEvent()
+    for i in range(ticks):
+        t.runNextEvent()
 
 def runTime(amount):
-	time = t.time()
-	while time + amount*10000000000 > t.time():
-		t.runNextEvent() 
+    time = t.time()
+    while time + amount*10000000000 > t.time():
+        t.runNextEvent() 
 
 #Create a Command Packet
 msg = pack()
@@ -83,28 +88,32 @@ pkt.setData(msg.data)
 pkt.setType(msg.get_amType())
 
 def sendCMD(string, seq):
-	args = string.split(' ');
-	msg.set_src(int(args[0]));
-	msg.set_dest(int(args[1]));
-	msg.set_seq(seq);
-	payload=args[2];
-	for i in range(3, len(args)):
-		payload= payload + ' '+ args[i]
-	
-	msg.setString_payload(payload)
-	
-	pkt.setData(msg.data)
-	pkt.setDestination(int(args[1]))
-	
-	#print "Delivering!"
-	pkt.deliver(int(args[1]), t.time()+5)
-	runTime(2);
+    args = string.split(' ');
+    msg.set_src(int(args[0]));
+    msg.set_dest(int(args[1]));
+    msg.set_seq(seq);
+    payload=args[2];
+    for i in range(3, len(args)):
+        payload= payload + ' '+ args[i]
+    
+    msg.setString_payload(payload)
+    
+    pkt.setData(msg.data)
+    pkt.setDestination(int(args[1]))
+    
+    #print "Delivering!"
+    pkt.deliver(int(args[1]), t.time()+5)
+    runTime(2);
     
 
 runTime(20)
-sendCMD("0 1 cmd server 1", 4)
-runTime(20)
-sendCMD("0 3 cmd client 8 1 1", 6)
+sendCMD("0 3 cmd hello jlusby 4", 4)
+#runTime(100)
+sendCMD("0 5 cmd hello mvtan 4", 5)
+runTime(200)
+sendCMD("0 3 cmd msg whateverr", 6)
+runTime(10)
+sendCMD("0 5 cmd listusr", 7)
 
 runTime(1000)
 

@@ -20,13 +20,11 @@ void createTransport(transport *output, uint8_t srcPort, uint8_t destPort, uint8
 	output->window = window;
 	output->seq = seq;
 	output->length = packetLength;
-
 	memcpy(output->payload, payload, packetLength);
 
 	for(i=packetLength; i<TRANSPORT_MAX_PAYLOAD_SIZE; i++){
 		output->payload[i]=0;
 	}
-
 }
 
 void printTransport(transport *input){
@@ -45,13 +43,10 @@ void printTransport(transport *input){
 		case TRANSPORT_DATA:
 			dbg_clear("transport", "DATA ");
 			break;
-		case TRANSPORT_RST:
-			dbg_clear("transport", "RST ");
-			break;
 		default:
 			dbg_clear("transport", "UNKNOWN");
 	}
-	dbg_clear("transport", "Window: %lu, Seq: %lu, Payload: ", input->window, input->seq, input->payload);
+	dbg_clear("transport", "Window: %lu, Seq: %lu, Length: %lu, Payload: ", input->window, input->seq, input->length, input->payload);
 
 	for(i=0; i<input->length; i++){
 		dbg_clear("transport", "%hhu, ", input->payload[i]);

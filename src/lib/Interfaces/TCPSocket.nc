@@ -7,7 +7,7 @@ interface TCPSocket<val_t>{
 	
 	async command uint8_t accept(val_t *input, val_t *output);
 	
-	command uint8_t connect(val_t *input, uint16_t destAddr, uint8_t destPort);
+	async command uint8_t connect(val_t *input, uint16_t destAddr, uint8_t destPort);
 	
 	async command uint8_t close(val_t *input);
 	

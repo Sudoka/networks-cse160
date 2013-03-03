@@ -1,7 +1,7 @@
 #ifndef HOP_LIST_H
 #define HOP_LIST_H
-#define HOPARRAYSIZE 20
-#define MAXNUMENTRIES HOPARRAYSIZE
+#define ARRAYSIZE 20
+#define MAXNUMVALS ARRAYSIZE
 
 typedef struct hopEntry {
 	uint8_t nodeID;
@@ -11,7 +11,7 @@ typedef struct hopEntry {
 
 typedef struct hopList
 {	
-	hopEntry values[HOPARRAYSIZE]; //list of values
+	hopEntry values[ARRAYSIZE]; //list of values
 	uint8_t numValues;			//number of objects currently in the array
 }hopList;
 
@@ -20,7 +20,7 @@ void hopListInit(hopList *cur){
 }
 
 bool hopListPushBack(hopList* cur, hopEntry newVal){
-	if(cur->numValues != MAXNUMENTRIES){
+	if(cur->numValues != MAXNUMVALS){
 		cur->values[cur->numValues] = newVal;
 		++cur->numValues;
 		return TRUE;	
@@ -28,7 +28,7 @@ bool hopListPushBack(hopList* cur, hopEntry newVal){
 }
 
 bool hopListPushFront(hopList* cur, hopEntry newVal){
-	if(cur->numValues!= MAXNUMENTRIES){
+	if(cur->numValues!= MAXNUMVALS){
 		uint8_t i;
 		for(i = cur->numValues-1; i >= 0; --i){
 			cur->values[i+1] = cur->values[i];
